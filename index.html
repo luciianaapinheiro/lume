@@ -315,6 +315,19 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
         <p class="dica">Arraste sobre a imagem para mover a camada selecionada. O PNG original nunca é alterado: ao salvar, é criada uma nova figurinha.</p>
 
         <div class="painel" style="margin-top:12px">
+          <h3>🪄 Remover fundo</h3>
+          <p class="dica" style="margin-top:0">Torna transparente a cor de fundo da imagem, com base nos cantos da foto. Funciona melhor em fundos lisos (foto de estúdio, fundo branco, parede de cor única).</p>
+          <div class="campo">
+            <label for="c-sensibilidade">Sensibilidade <span id="v-sensibilidade"></span></label>
+            <input type="range" id="c-sensibilidade" min="10" max="120" step="1" value="45">
+          </div>
+          <div class="acoes-editor">
+            <button class="btn btn-pop" id="btn-remover-fundo">🪄 Remover fundo</button>
+            <button class="btn" id="btn-restaurar-fundo">Restaurar imagem original</button>
+          </div>
+        </div>
+
+        <div class="painel">
           <h3>📋 Copiar como figurinha</h3>
           <p class="dica" style="margin-top:0">Copia o PNG para a área de transferência preservando o canal alfa, para colar direto no Instagram.</p>
           <div class="acoes-editor">
@@ -1006,6 +1019,7 @@ async function abrirEditor(figurinhaId) {
   estado.editor = {
     figurinhaId, nome: fig.nome, camadas,
     imagem: img,
+    imagemOriginal: img,
     selecionada: camadas[0].id,
     historico: [], futuro: [],
   };
@@ -1165,6 +1179,72 @@ function desenhar() {
     ctx.restore();
   }
 }
+
+/* ----- remoção de fundo (chroma-key pelos cantos da imagem) -----
+   Não usa nenhum modelo de IA — funciona amostrando a cor dos 4 cantos
+   da foto original e tornando transparente tudo que for parecido com
+   essa cor, com uma faixa de suavização na borda pra não serrilhar.
+   Sempre parte da imagem ORIGINAL (nunca da já processada), pra dar
+   pra ajustar a sensibilidade e tentar de novo sem acumular erro. */
+function removerFundo() {
+  const ed = estado.editor;
+  if (!ed || !ed.imagemOriginal) return;
+  const origem = ed.imagemOriginal;
+  const w = origem.naturalWidth, h = origem.naturalHeight;
+
+  const off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  const octx = off.getContext('2d');
+  octx.drawImage(origem, 0, 0, w, h);
+  const dados = octx.getImageData(0, 0, w, h);
+  const px = dados.data;
+
+  const cantos = [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]];
+  let rMed = 0, gMed = 0, bMed = 0;
+  cantos.forEach(([x, y]) => {
+    const i = (y * w + x) * 4;
+    rMed += px[i]; gMed += px[i + 1]; bMed += px[i + 2];
+  });
+  rMed /= cantos.length; gMed /= cantos.length; bMed /= cantos.length;
+
+  const tolerancia = Number($('#c-sensibilidade').value) || 45;
+  const suavizar = 30;
+
+  for (let i = 0; i < px.length; i += 4) {
+    const dr = px[i] - rMed, dg = px[i + 1] - gMed, db = px[i + 2] - bMed;
+    const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+    if (dist < tolerancia) {
+      px[i + 3] = 0;
+    } else if (dist < tolerancia + suavizar) {
+      const fator = (dist - tolerancia) / suavizar;
+      px[i + 3] = Math.round(px[i + 3] * fator);
+    }
+  }
+
+  octx.putImageData(dados, 0, 0);
+  const nova = new Image();
+  nova.onload = () => {
+    ed.imagem = nova;
+    desenhar();
+    avisar('Fundo removido. Se não ficou bom, ajuste a sensibilidade ou restaure a imagem original.');
+  };
+  nova.src = off.toDataURL('image/png');
+}
+
+function restaurarFundo() {
+  const ed = estado.editor;
+  if (!ed || !ed.imagemOriginal) return;
+  ed.imagem = ed.imagemOriginal;
+  desenhar();
+  avisar('Imagem original restaurada.');
+}
+
+$('#btn-remover-fundo').addEventListener('click', removerFundo);
+$('#btn-restaurar-fundo').addEventListener('click', restaurarFundo);
+$('#c-sensibilidade').addEventListener('input', () => {
+  $('#v-sensibilidade').textContent = $('#c-sensibilidade').value;
+});
+$('#v-sensibilidade').textContent = $('#c-sensibilidade').value;
 
 /* ----- verificação real de transparência (canal alfa) -----
    O canvas NUNCA recebe um fillRect de fundo antes de exportar — desenhar()
