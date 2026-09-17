@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;700;800&family=Inter:wght@400;500;600&family=Anton&family=Fredoka:wght@600;700&family=Caveat:wght@700&family=Poppins:wght@500;700&family=Bebas+Neue&family=Pacifico&family=Permanent+Marker&family=Archivo+Black&family=Playfair+Display:wght@700;800&family=Luckiest+Guy&family=Baloo+2:wght@600;700&family=Righteous&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fundo:#E9E4F3;
+  --fundo2:#DCD5EC;
+  --painel:#FFFFFF;
+  --tinta:#221A2E;
+  --tinta-fraca:#6A5E7E;
+  --borda:#CFC6E2;
+  --pop:#FF3D7F;
+  --pop-tinta:#FFFFFF;
+  --menta:#16C79A;
+  --sol:#FFC542;
+  --sombra:0 6px 0 rgba(34,26,46,.12);
+  --raio:14px;
+  --ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"Bricolage Grotesque","Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --fundo:#191223;
+    --fundo2:#221A2E;
+    --painel:#2A2038;
+    --tinta:#F4EFFF;
+    --tinta-fraca:#A395BC;
+    --borda:#3C3050;
+    --sombra:0 6px 0 rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --fundo:#191223;
+  --fundo2:#221A2E;
+  --painel:#2A2038;
+  --tinta:#F4EFFF;
+  --tinta-fraca:#A395BC;
+  --borda:#3C3050;
+  --sombra:0 6px 0 rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--fundo);
+  color:var(--tinta);
+  font-family:var(--ui);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--pop);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- topo ---------- */
+.topo{
+  position:sticky;top:0;z-index:20;
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;
+  background:var(--fundo);
+  border-bottom:1px solid var(--borda);
+}
+.marca{
+  font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:8px;margin-right:auto;
+}
+.marca .selo{
+  width:26px;height:26px;border-radius:8px;background:var(--pop);
+  display:grid;place-items:center;color:#fff;font-size:14px;
+  transform:rotate(-6deg);box-shadow:0 3px 0 rgba(34,26,46,.25);
+}
+.btn{
+  border:1px solid var(--borda);background:var(--painel);color:var(--tinta);
+  border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px;
+}
+.btn:hover{border-color:var(--pop)}
+.btn-pop{background:var(--pop);border-color:var(--pop);color:var(--pop-tinta)}
+.btn-pop:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-icone{padding:8px 10px}
+
+/* ---------- galeria ---------- */
+.conteudo{padding:14px;max-width:1100px;margin:0 auto}
+.barra-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.busca{
+  flex:1 1 180px;min-width:150px;
+  border:1px solid var(--borda);background:var(--painel);
+  border-radius:10px;padding:8px 12px;
+}
+.chip{
+  border:1px solid var(--borda);background:transparent;color:var(--tinta-fraca);
+  border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;
+}
+.chip[aria-pressed="true"]{background:var(--tinta);color:var(--fundo);border-color:var(--tinta)}
+
+.caminho{
+  display:flex;flex-wrap:wrap;align-items:center;gap:2px;
+  margin-bottom:12px;font-size:13px;color:var(--tinta-fraca);
+}
+.caminho .crumb{
+  border:none;background:transparent;color:inherit;padding:4px 6px;
+  border-radius:7px;font-size:13px;font-weight:500;
+}
+.caminho .crumb:hover{background:var(--fundo2);color:var(--tinta)}
+.caminho .crumb.atual{color:var(--tinta);font-weight:700;pointer-events:none}
+.caminho .crumb-sep{opacity:.5;padding:0 1px}
+
+.grade-pastas{
+  display:grid;gap:10px;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  margin-bottom:14px;
+}
+.grade-pastas:empty{display:none;margin:0}
+.pasta{
+  position:relative;background:var(--painel);border:1px solid var(--borda);
+  border-radius:var(--raio);padding:10px 12px;box-shadow:var(--sombra);
+  display:flex;align-items:center;gap:10px;text-align:left;
+  cursor:pointer;color:var(--tinta);
+}
+.pasta:hover{border-color:var(--pop)}
+.pasta .icone{font-size:24px;line-height:1}
+.pasta .info{min-width:0;flex:1}
+.pasta .nome{
+  font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pasta .qtd{font-size:11px;color:var(--tinta-fraca)}
+.pasta .acoes-pasta{display:flex;gap:2px;flex-shrink:0}
+.pasta .acoes-pasta button{
+  border:none;background:transparent;color:var(--tinta-fraca);
+  width:24px;height:24px;border-radius:7px;font-size:12px;
+}
+.pasta .acoes-pasta button:hover{background:var(--fundo2);color:var(--tinta)}
+
+.grade{
+  display:grid;gap:14px;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+}
+.figurinha{
+  position:relative;background:var(--painel);border:1px solid var(--borda);
+  border-radius:var(--raio);padding:8px;box-shadow:var(--sombra);
+}
+.figurinha .quadro{
+  aspect-ratio:1/1;border-radius:10px;overflow:hidden;
+  background-color:#fff;
+  background-image:
+    linear-gradient(45deg,#E2DCEF 25%,transparent 25%),
+    linear-gradient(-45deg,#E2DCEF 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#E2DCEF 75%),
+    linear-gradient(-45deg,transparent 75%,#E2DCEF 75%);
+  background-size:14px 14px;
+  background-position:0 0,0 7px,7px -7px,-7px 0;
+  display:grid;place-items:center;
+}
+.figurinha .quadro img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.figurinha .nome{
+  font-size:13px;font-weight:600;margin-top:8px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.figurinha .meta{font-size:11px;color:var(--tinta-fraca)}
+.figurinha .acoes{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.figurinha .acoes .btn{flex:1 1 auto;padding:6px 8px;font-size:13px;min-width:56px}
+.figurinha .acoes .btn.btn-icone{flex:0 0 auto;min-width:0;padding:6px 9px}
+.fav{
+  position:absolute;top:12px;right:12px;z-index:2;
+  border:none;background:rgba(255,255,255,.9);border-radius:999px;
+  width:28px;height:28px;display:grid;place-items:center;font-size:14px;
+  box-shadow:0 2px 6px rgba(0,0,0,.18);color:#221A2E;
+}
+.vazio{
+  border:2px dashed var(--borda);border-radius:var(--raio);
+  padding:40px 20px;text-align:center;color:var(--tinta-fraca);
+}
+.vazio h2{font-family:var(--display);color:var(--tinta);margin:0 0 6px;font-size:20px}
+.arrastando{border-color:var(--pop);background:var(--fundo2)}
+
+/* ---------- editor ---------- */
+.editor{display:none}
+.editor.ativo{display:block}
+.galeria.oculta{display:none}
+.editor-layout{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:900px){.editor-layout{grid-template-columns:minmax(0,1fr) 330px}}
+.palco{
+  background-color:var(--painel);
+  background-image:
+    linear-gradient(45deg,#E2DCEF 25%,transparent 25%),
+    linear-gradient(-45deg,#E2DCEF 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#E2DCEF 75%),
+    linear-gradient(-45deg,transparent 75%,#E2DCEF 75%);
+  background-size:20px 20px;
+  background-position:0 0,0 10px,10px -10px,-10px 0;
+  border:1px solid var(--borda);border-radius:var(--raio);
+  padding:10px;box-shadow:var(--sombra);
+}
+#tela{width:100%;height:auto;display:block;touch-action:none;border-radius:8px}
+.painel{
+  background:var(--painel);border:1px solid var(--borda);
+  border-radius:var(--raio);padding:12px;box-shadow:var(--sombra);
+}
+.painel + .painel{margin-top:12px}
+.painel h3{font-family:var(--display);font-size:15px;margin:0 0 8px}
+.campo{display:grid;gap:4px;margin-bottom:10px}
+.campo label{font-size:12px;color:var(--tinta-fraca);font-weight:500}
+.campo input[type="text"],.campo textarea,.campo select{
+  border:1px solid var(--borda);background:var(--fundo);border-radius:9px;padding:7px 9px;width:100%;
+}
+.campo textarea{resize:vertical;min-height:54px}
+.campo-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--tinta);cursor:pointer}
+.campo-check input{accent-color:var(--pop);width:16px;height:16px}
+.linha{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type="range"]{width:100%;accent-color:var(--pop)}
+input[type="color"]{width:100%;height:34px;border:1px solid var(--borda);border-radius:9px;background:var(--fundo);padding:2px}
+.camadas{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.camadas li{
+  display:flex;align-items:center;gap:6px;
+  border:1px solid var(--borda);border-radius:9px;padding:6px 8px;font-size:13px;
+}
+.camadas li.sel{border-color:var(--pop);background:color-mix(in srgb,var(--pop) 8%,transparent)}
+.camadas .rotulo{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;background:none;border:none;padding:0}
+.camadas .mini{border:none;background:transparent;padding:2px 4px;font-size:13px;color:var(--tinta-fraca)}
+.acoes-editor{display:flex;flex-wrap:wrap;gap:8px}
+.acoes-editor .btn{flex:1 1 130px}
+.dica{font-size:12px;color:var(--tinta-fraca);margin:8px 0 0}
+
+.selo-transparencia{
+  display:flex;align-items:center;gap:7px;
+  margin-top:10px;padding:7px 12px;border-radius:999px;
+  font-size:13px;font-weight:600;width:fit-content;
+  border:1px solid transparent;
+}
+.selo-transparencia.ok{
+  background:color-mix(in srgb,var(--menta) 16%,var(--painel));
+  color:var(--menta);border-color:color-mix(in srgb,var(--menta) 40%,transparent);
+}
+.selo-transparencia.alerta{
+  background:color-mix(in srgb,var(--sol) 20%,var(--painel));
+  color:#8a6300;border-color:color-mix(in srgb,var(--sol) 50%,transparent);
+}
+:root[data-theme="dark"] .selo-transparencia.alerta{color:var(--sol)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .selo-transparencia.alerta{color:var(--sol)}
+}
+.selo-transparencia:empty{display:none}
+
+/* ---------- diálogo e aviso ---------- */
+dialog{
+  border:1px solid var(--borda);border-radius:var(--raio);background:var(--painel);
+  color:var(--tinta);max-width:min(420px,92vw);padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.3);
+}
+dialog::backdrop{background:rgba(25,18,35,.55)}
+dialog h3{font-family:var(--display);margin:0 0 10px}
+.dialogo-acoes{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+#aviso{
+  position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(20px);
+  background:var(--tinta);color:var(--fundo);padding:10px 16px;border-radius:999px;
+  font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;
+  z-index:60;max-width:90vw;text-align:center;
+}
+#aviso.visivel{opacity:1;transform:translateX(-50%) translateY(0)}
+.previa-copia img{
+  max-width:100%;background:#fff;border-radius:10px;border:1px solid var(--borda);
+}
+.oculto{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca"><span class="selo">✨</span> Lume</div>
+  <button class="btn btn-icone" id="btn-tema" title="Alternar tema">◐</button>
+  <button class="btn btn-pop" id="btn-importar">Adicionar PNG</button>
+  <input type="file" id="arquivo" accept="image/png,image/webp,image/jpeg" multiple class="oculto">
+</header>
+
+<main class="conteudo">
+
+  <!-- GALERIA -->
+  <section class="galeria" id="galeria">
+    <div class="barra-filtros">
+      <input class="busca" id="busca" type="search" placeholder="Buscar por nome">
+      <button class="chip" id="chip-fav" aria-pressed="false">★ Favoritas</button>
+      <button class="chip" id="btn-nova-pasta">📁 Nova pasta</button>
+    </div>
+    <nav class="caminho" id="caminho-pastas" aria-label="Caminho de pastas"></nav>
+    <div id="area-solta">
+      <div class="grade-pastas" id="grade-pastas"></div>
+      <div class="grade" id="grade"></div>
+      <div class="vazio oculto" id="vazio">
+        <h2>Nenhuma figurinha aqui ainda</h2>
+        <p>Adicione um PNG com fundo transparente ou arraste os arquivos para cá.</p>
+        <button class="btn btn-pop" id="btn-importar-vazio">Adicionar PNG</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- EDITOR -->
+  <section class="editor" id="editor">
+    <div class="barra-filtros">
+      <button class="btn" id="btn-voltar">← Galeria</button>
+      <button class="btn btn-icone" id="btn-desfazer" title="Desfazer">↺</button>
+      <button class="btn btn-icone" id="btn-refazer" title="Refazer">↻</button>
+      <strong id="titulo-editor" style="margin-left:auto;font-size:14px"></strong>
+    </div>
+
+    <div class="editor-layout">
+      <div>
+        <div class="palco"><canvas id="tela" width="1024" height="1024"></canvas></div>
+        <div class="selo-transparencia" id="selo-transparencia" aria-live="polite"></div>
+        <p class="dica">Arraste sobre a imagem para mover a camada selecionada. O PNG original nunca é alterado: ao salvar, é criada uma nova figurinha.</p>
+
+        <div class="painel" style="margin-top:12px">
+          <h3>📋 Copiar como figurinha</h3>
+          <p class="dica" style="margin-top:0">Copia o PNG para a área de transferência preservando o canal alfa, para colar direto no Instagram.</p>
+          <div class="acoes-editor">
+            <button class="btn btn-pop" id="btn-copiar">📋 Copiar como figurinha</button>
+          </div>
+        </div>
+
+        <div class="painel">
+          <h3>💾 Salvar PNG transparente</h3>
+          <p class="dica" style="margin-top:0">Gera e salva um arquivo PNG real com fundo 100% transparente, sem nenhuma cor pintada atrás da arte.</p>
+          <div class="acoes-editor">
+            <button class="btn" id="btn-baixar">💾 Salvar PNG transparente</button>
+            <button class="btn" id="btn-compartilhar">Compartilhar</button>
+          </div>
+        </div>
+
+        <div class="painel">
+          <h3>Galeria</h3>
+          <div class="acoes-editor">
+            <button class="btn" id="btn-salvar">Salvar na galeria</button>
+          </div>
+          <p class="dica">Alguns navegadores e apps não aceitam colar imagens — nesse caso use Salvar PNG transparente ou Compartilhar.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="painel">
+          <h3>Camadas</h3>
+
+          <ul class="camadas" id="lista-camadas"></ul>
+          <div class="acoes-editor" style="margin-top:10px">
+            <button class="btn" id="btn-add-texto">+ Texto</button>
+          </div>
+        </div>
+
+        <div class="painel" id="inspetor-texto">
+          <h3>Texto</h3>
+          <div class="campo">
+            <label for="txt-conteudo">Conteúdo</label>
+            <textarea id="txt-conteudo" rows="2"></textarea>
+          </div>
+          <div class="linha">
+            <div class="campo">
+              <label for="txt-fonte">Fonte</label>
+              <select id="txt-fonte">
+                <optgroup label="Display / impacto">
+                  <option value="Bricolage Grotesque">Bricolage</option>
+                  <option value="Anton">Anton (condensada)</option>
+                  <option value="Archivo Black">Archivo Black</option>
+                  <option value="Bebas Neue">Bebas Neue</option>
+                  <option value="Luckiest Guy">Luckiest Guy (cartoon)</option>
+                  <option value="Righteous">Righteous (retrô)</option>
+                </optgroup>
+                <optgroup label="Arredondadas / amigáveis">
+                  <option value="Fredoka">Fredoka</option>
+                  <option value="Baloo 2">Baloo 2</option>
+                  <option value="Poppins">Poppins</option>
+                </optgroup>
+                <optgroup label="Manuscritas">
+                  <option value="Caveat">Caveat</option>
+                  <option value="Pacifico">Pacifico</option>
+                  <option value="Permanent Marker">Permanent Marker</option>
+                </optgroup>
+                <optgroup label="Texto / elegante">
+                  <option value="Inter">Inter</option>
+                  <option value="Playfair Display">Playfair Display</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="txt-tamanho">Tamanho <span id="v-tamanho"></span></label>
+              <input type="range" id="txt-tamanho" min="16" max="320" step="2">
+            </div>
+          </div>
+          <div class="linha">
+            <div class="campo"><label for="txt-cor">Cor</label><input type="color" id="txt-cor"></div>
+            <div class="campo"><label for="txt-contorno-cor">Contorno</label><input type="color" id="txt-contorno-cor"></div>
+          </div>
+          <div class="campo">
+            <label class="campo-check">
+              <input type="checkbox" id="txt-contorno-ativo">
+              Usar contorno
+            </label>
+          </div>
+          <div class="campo">
+            <label for="txt-contorno">Espessura do contorno <span id="v-contorno"></span></label>
+            <input type="range" id="txt-contorno" min="1" max="40" step="1">
+          </div>
+          <div class="campo">
+            <label for="txt-sombra">Sombra <span id="v-sombra"></span></label>
+            <input type="range" id="txt-sombra" min="0" max="60" step="1">
+          </div>
+          <div class="campo"><label for="txt-sombra-cor">Cor da sombra</label><input type="color" id="txt-sombra-cor"></div>
+        </div>
+
+        <div class="painel" id="inspetor-comum">
+          <h3>Posição</h3>
+          <div class="campo">
+            <label for="c-rotacao">Rotação <span id="v-rotacao"></span></label>
+            <input type="range" id="c-rotacao" min="-180" max="180" step="1">
+          </div>
+          <div class="campo">
+            <label for="c-escala">Tamanho da camada <span id="v-escala"></span></label>
+            <input type="range" id="c-escala" min="10" max="300" step="1">
+          </div>
+          <div class="campo">
+            <label for="c-opacidade">Opacidade <span id="v-opacidade"></span></label>
+            <input type="range" id="c-opacidade" min="0" max="100" step="1">
+          </div>
+          <div class="acoes-editor">
+            <button class="btn" id="btn-centralizar">Centralizar</button>
+            <button class="btn" id="btn-remover-camada">Remover camada</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg-salvar">
+  <h3>Salvar na galeria</h3>
+  <div class="campo">
+    <label for="salvar-nome">Nome da figurinha</label>
+    <input type="text" id="salvar-nome">
+  </div>
+  <div class="campo">
+    <label for="salvar-pasta">Pasta</label>
+    <select id="salvar-pasta"><option value="">🏠 Início (sem pasta)</option></select>
+  </div>
+  <div class="dialogo-acoes">
+    <button class="btn" data-fechar>Cancelar</button>
+    <button class="btn btn-pop" id="confirmar-salvar">Salvar</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-renomear">
+  <h3 id="titulo-renomear">Renomear figurinha</h3>
+  <div class="campo">
+    <label for="renomear-nome" id="rotulo-renomear">Nome</label>
+    <input type="text" id="renomear-nome" maxlength="60">
+  </div>
+  <div class="dialogo-acoes">
+    <button class="btn" data-fechar>Cancelar</button>
+    <button class="btn btn-pop" id="confirmar-renomear">Salvar</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-pasta">
+  <h3>Nova pasta</h3>
+  <p class="dica" style="margin:0 0 10px" id="dlg-pasta-onde"></p>
+  <div class="campo"><label for="pasta-nome">Nome</label><input type="text" id="pasta-nome" maxlength="60"></div>
+  <div class="dialogo-acoes">
+    <button class="btn" data-fechar>Cancelar</button>
+    <button class="btn btn-pop" id="confirmar-pasta">Criar</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-mover">
+  <h3>Mover figurinha</h3>
+  <div class="campo">
+    <label for="mover-pasta">Pasta de destino</label>
+    <select id="mover-pasta"><option value="">🏠 Início (sem pasta)</option></select>
+  </div>
+  <div class="dialogo-acoes">
+    <button class="btn" data-fechar>Cancelar</button>
+    <button class="btn btn-pop" id="confirmar-mover">Mover</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-copia">
+  <h3>Copie manualmente</h3>
+  <p style="margin-top:0;font-size:14px;color:var(--tinta-fraca)">Este navegador não deixou copiar automaticamente. Toque e segure a imagem para copiar, ou use "Salvar PNG transparente".</p>
+  <div class="previa-copia"><img id="img-copia" alt="Figurinha pronta"></div>
+  <div class="dialogo-acoes"><button class="btn" data-fechar>Fechar</button></div>
+</dialog>
+
+<div id="aviso" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================
+   Lume 0.4.0 (antes chamado Sticker Studio)
+   Armazenamento: IndexedDB (figurinhas, pastas hierárquicas, projetos)
+   Editor: canvas 2D com camadas (imagem + textos)
+   ========================================================= */
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+function avisar(msg) {
+  const el = $('#aviso');
+  el.textContent = msg;
+  el.classList.add('visivel');
+  clearTimeout(avisar._t);
+  avisar._t = setTimeout(() => el.classList.remove('visivel'), 2800);
+}
+
+/* ---------------- IndexedDB ---------------- */
+const DB_NOME = 'lume';
+const DB_VERSAO = 2; // v2: pastas hierárquicas substituem a antiga store "categorias"
+let _db = null;
+
+function abrirDB() {
+  if (_db) return Promise.resolve(_db);
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NOME, DB_VERSAO);
+    req.onupgradeneeded = (ev) => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('figurinhas')) {
+        const s = db.createObjectStore('figurinhas', { keyPath: 'id' });
+        s.createIndex('criadoEm', 'criadoEm');
+        s.createIndex('pastaId', 'pastaId');
+      } else if (ev.oldVersion < 2) {
+        // vindo da v1: adiciona o índice novo à store já existente
+        const s = req.transaction.objectStore('figurinhas');
+        if (!s.indexNames.contains('pastaId')) s.createIndex('pastaId', 'pastaId');
+      }
+      if (!db.objectStoreNames.contains('pastas')) {
+        const p = db.createObjectStore('pastas', { keyPath: 'id' });
+        p.createIndex('paiId', 'paiId');
+      }
+      if (!db.objectStoreNames.contains('projetos')) db.createObjectStore('projetos', { keyPath: 'id' });
+      // A store "categorias" (v1, tags simples) foi substituída por "pastas"
+      // (hierárquica). Os dados antigos de categoria em cada figurinha ficam
+      // apenas sem uso — nada é apagado automaticamente.
+      if (db.objectStoreNames.contains('categorias')) db.deleteObjectStore('categorias');
+    };
+    req.onsuccess = () => { _db = req.result; res(_db); };
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function loja(nome, modo = 'readonly') {
+  const db = await abrirDB();
+  return db.transaction(nome, modo).objectStore(nome);
+}
+function pedido(req) {
+  return new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+}
+async function salvarRegistro(nome, obj) { return pedido((await loja(nome, 'readwrite')).put(obj)); }
+async function lerTodos(nome) { return pedido((await loja(nome)).getAll()); }
+async function lerUm(nome, id) { return pedido((await loja(nome)).get(id)); }
+async function apagarRegistro(nome, id) { return pedido((await loja(nome, 'readwrite')).delete(id)); }
+
+/* ---------------- Estado ---------------- */
+const estado = {
+  figurinhas: [],
+  pastas: [],
+  pastaAtual: null, // id da pasta aberta; null = raiz ("Início")
+  filtro: { texto: '', favoritos: false },
+  urls: [],
+  editor: null, // {figurinhaId, nome, camadas, selecionada, historico, futuro, imagens}
+};
+
+/* ---------------- Tema ---------------- */
+$('#btn-tema').addEventListener('click', () => {
+  const atual = document.documentElement.getAttribute('data-theme');
+  const escuroAgora = atual ? atual === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', escuroAgora ? 'light' : 'dark');
+});
+
+/* ---------------- Importação ---------------- */
+$('#btn-importar').addEventListener('click', () => $('#arquivo').click());
+$('#btn-importar-vazio').addEventListener('click', () => $('#arquivo').click());
+$('#arquivo').addEventListener('change', (e) => {
+  importarArquivos(Array.from(e.target.files || []));
+  e.target.value = '';
+});
+
+const area = $('#area-solta');
+['dragenter', 'dragover'].forEach(ev => area.addEventListener(ev, (e) => {
+  e.preventDefault(); $('#vazio').classList.add('arrastando');
+}));
+['dragleave', 'drop'].forEach(ev => area.addEventListener(ev, (e) => {
+  e.preventDefault(); $('#vazio').classList.remove('arrastando');
+}));
+area.addEventListener('drop', (e) => {
+  const arquivos = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
+  if (arquivos.length) importarArquivos(arquivos);
+});
+
+async function dimensoes(blob) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise((res, rej) => {
+      const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url;
+    });
+    return { largura: img.naturalWidth, altura: img.naturalHeight };
+  } finally { URL.revokeObjectURL(url); }
+}
+
+async function importarArquivos(arquivos) {
+  if (!arquivos.length) return;
+  let ok = 0;
+  for (const arq of arquivos) {
+    try {
+      const dim = await dimensoes(arq);
+      const fig = {
+        id: uid(),
+        nome: arq.name.replace(/\.[^.]+$/, '').slice(0, 60) || 'figurinha',
+        blob: arq,
+        tipo: arq.type || 'image/png',
+        largura: dim.largura,
+        altura: dim.altura,
+        pastaId: estado.pastaAtual,
+        favorito: false,
+        criadoEm: Date.now(),
+        origem: 'importado',
+        origemId: null,
+      };
+      await salvarRegistro('figurinhas', fig);
+      ok++;
+    } catch (err) {
+      console.error('Falha ao importar', arq.name, err);
+    }
+  }
+  await carregar();
+  avisar(ok === 1 ? '1 figurinha adicionada' : ok + ' figurinhas adicionadas');
+}
+
+/* ---------------- Galeria / Pastas ---------------- */
+async function carregar() {
+  estado.figurinhas = (await lerTodos('figurinhas')).sort((a, b) => b.criadoEm - a.criadoEm);
+  estado.pastas = await lerTodos('pastas');
+  desenharCaminho();
+  desenharGrade();
+}
+
+function escapar(t) {
+  return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function normPastaId(id) { return id || null; } // '' e undefined contam como raiz
+
+/* Sobe a cadeia de pastas-pai até a raiz. Devolve [raiz-filha, ..., atual]. */
+function caminhoAteRaiz(id) {
+  const cadeia = [];
+  let atual = normPastaId(id);
+  let guarda = 0;
+  while (atual && guarda++ < 100) {
+    const p = estado.pastas.find(x => x.id === atual);
+    if (!p) break;
+    cadeia.unshift(p);
+    atual = normPastaId(p.paiId);
+  }
+  return cadeia;
+}
+function caminhoTexto(id) {
+  const cadeia = caminhoAteRaiz(id);
+  return cadeia.length ? cadeia.map(p => p.nome).join(' / ') : 'Início';
+}
+
+/* Uma lista achatada de todas as pastas, em ordem de árvore, com a
+   profundidade de cada uma — usada para montar os <select> com indentação. */
+function pastasEmArvore() {
+  const lista = [];
+  function visitar(paiId, prof) {
+    estado.pastas
+      .filter(p => normPastaId(p.paiId) === paiId)
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      .forEach(p => { lista.push({ pasta: p, profundidade: prof }); visitar(p.id, prof + 1); });
+  }
+  visitar(null, 0);
+  return lista;
+}
+
+function preencherSelectPastas(sel, valorAtual) {
+  const opcoes = pastasEmArvore()
+    .map(({ pasta, profundidade }) => `<option value="${pasta.id}">${'　'.repeat(profundidade)}${profundidade ? '↳ ' : ''}${escapar(pasta.nome)}</option>`)
+    .join('');
+  sel.innerHTML = '<option value="">🏠 Início (sem pasta)</option>' + opcoes;
+  sel.value = valorAtual || '';
+}
+
+function estaFiltrando() {
+  return estado.filtro.texto.trim() !== '' || estado.filtro.favoritos;
+}
+
+function desenharCaminho() {
+  const el = $('#caminho-pastas');
+  if (estaFiltrando()) {
+    const rotulo = estado.filtro.texto.trim() && estado.filtro.favoritos
+      ? 'Busca nas favoritas, em todas as pastas'
+      : estado.filtro.favoritos ? '★ Favoritas em todas as pastas' : 'Resultados em todas as pastas';
+    el.innerHTML = `<span class="crumb atual">${rotulo}</span>`;
+    return;
+  }
+  const cadeia = caminhoAteRaiz(estado.pastaAtual);
+  let html = `<button class="crumb${cadeia.length ? '' : ' atual'}" data-ir="">🏠 Início</button>`;
+  cadeia.forEach((p, i) => {
+    const ultima = i === cadeia.length - 1;
+    html += `<span class="crumb-sep">/</span><button class="crumb${ultima ? ' atual' : ''}" data-ir="${p.id}">${escapar(p.nome)}</button>`;
+  });
+  el.innerHTML = html;
+}
+$('#caminho-pastas').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-ir]');
+  if (!b) return;
+  estado.pastaAtual = b.dataset.ir || null;
+  desenharCaminho();
+  desenharGrade();
+});
+
+function filtradas() {
+  const t = estado.filtro.texto.trim().toLowerCase();
+  return estado.figurinhas.filter(f => {
+    if (estado.filtro.favoritos && !f.favorito) return false;
+    if (t && !f.nome.toLowerCase().includes(t)) return false;
+    return true;
+  });
+}
+
+function desenharGrade() {
+  estado.urls.forEach(URL.revokeObjectURL);
+  estado.urls = [];
+  const filtrando = estaFiltrando();
+  const listaFig = filtrando
+    ? filtradas()
+    : filtradas().filter(f => normPastaId(f.pastaId) === estado.pastaAtual);
+
+  const gradePastas = $('#grade-pastas');
+  gradePastas.innerHTML = '';
+  if (!filtrando) {
+    const subs = estado.pastas
+      .filter(p => normPastaId(p.paiId) === estado.pastaAtual)
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    for (const p of subs) {
+      const nSub = estado.pastas.filter(x => x.paiId === p.id).length;
+      const nFig = estado.figurinhas.filter(f => f.pastaId === p.id).length;
+      const partes = [];
+      if (nSub) partes.push(nSub + (nSub === 1 ? ' pasta' : ' pastas'));
+      if (nFig) partes.push(nFig + (nFig === 1 ? ' figurinha' : ' figurinhas'));
+      const tile = document.createElement('div');
+      tile.className = 'pasta';
+      tile.dataset.abrir = p.id;
+      tile.innerHTML = `
+        <span class="icone">📁</span>
+        <span class="info">
+          <span class="nome">${escapar(p.nome)}</span>
+          <span class="qtd">${partes.length ? partes.join(' · ') : 'vazia'}</span>
+        </span>
+        <span class="acoes-pasta">
+          <button data-renomear-pasta="${p.id}" title="Renomear pasta">✏️</button>
+          <button data-apagar-pasta="${p.id}" title="Excluir pasta">✕</button>
+        </span>`;
+      gradePastas.appendChild(tile);
+    }
+  }
+
+  const grade = $('#grade');
+  grade.innerHTML = '';
+  const vazio = $('#vazio');
+  const semNada = listaFig.length === 0 && gradePastas.children.length === 0;
+  vazio.classList.toggle('oculto', !semNada);
+  if (semNada) {
+    vazio.querySelector('h2').textContent = filtrando ? 'Nada encontrado' : 'Esta pasta está vazia';
+    vazio.querySelector('p').textContent = filtrando
+      ? 'Tente outro termo de busca ou desative o filtro de favoritas.'
+      : 'Adicione um PNG com fundo transparente, arraste os arquivos para cá ou crie uma subpasta.';
+  }
+  for (const f of listaFig) {
+    const url = URL.createObjectURL(f.blob);
+    estado.urls.push(url);
+    const caminho = filtrando ? caminhoTexto(f.pastaId) : '';
+    const card = document.createElement('article');
+    card.className = 'figurinha';
+    card.innerHTML = `
+      <button class="fav" data-fav="${f.id}" title="Favoritar" aria-pressed="${f.favorito}">${f.favorito ? '★' : '☆'}</button>
+      <div class="quadro"><img src="${url}" alt="${escapar(f.nome)}" loading="lazy"></div>
+      <div class="nome">${escapar(f.nome)}</div>
+      <div class="meta">${f.largura}×${f.altura}${caminho ? ' · 📁 ' + escapar(caminho) : ''}${f.origem === 'editado' ? ' · editada' : ''}</div>
+      <div class="acoes">
+        <button class="btn" data-editar="${f.id}">Editar</button>
+        <button class="btn" data-copiar="${f.id}">Copiar</button>
+        <button class="btn btn-icone" data-mover="${f.id}" title="Mover para pasta">📁</button>
+        <button class="btn btn-icone" data-renomear="${f.id}" title="Renomear">✏️</button>
+        <button class="btn btn-icone" data-apagar="${f.id}" title="Excluir">✕</button>
+      </div>`;
+    grade.appendChild(card);
+  }
+}
+
+$('#grade-pastas').addEventListener('click', async (e) => {
+  const acaoBtn = e.target.closest('button[data-renomear-pasta], button[data-apagar-pasta]');
+  if (acaoBtn) {
+    e.stopPropagation();
+    if (acaoBtn.dataset.renomearPasta) {
+      const p = estado.pastas.find(x => x.id === acaoBtn.dataset.renomearPasta);
+      if (p) abrirRenomear('pasta', p);
+    } else if (acaoBtn.dataset.apagarPasta) {
+      await excluirPasta(acaoBtn.dataset.apagarPasta);
+    }
+    return;
+  }
+  const tile = e.target.closest('.pasta[data-abrir]');
+  if (tile) {
+    estado.pastaAtual = tile.dataset.abrir;
+    desenharCaminho();
+    desenharGrade();
+  }
+});
+
+/* ----- criar e excluir pastas ----- */
+$('#btn-nova-pasta').addEventListener('click', () => {
+  $('#pasta-nome').value = '';
+  const cadeia = caminhoAteRaiz(estado.pastaAtual);
+  $('#dlg-pasta-onde').textContent = cadeia.length
+    ? `Criada dentro de "${cadeia[cadeia.length - 1].nome}".`
+    : 'Criada na pasta Início.';
+  $('#dlg-pasta').showModal();
+});
+$('#confirmar-pasta').addEventListener('click', async () => {
+  const nome = $('#pasta-nome').value.trim();
+  if (!nome) return;
+  await salvarRegistro('pastas', { id: uid(), nome: nome.slice(0, 60), paiId: estado.pastaAtual, criadoEm: Date.now() });
+  $('#dlg-pasta').close();
+  await carregar();
+  avisar('Pasta criada');
+});
+$('#pasta-nome').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#confirmar-pasta').click(); } });
+
+function coletarDescendentes(pastaId) {
+  const pastas = [];
+  const figurinhasIds = [];
+  for (const p of estado.pastas.filter(x => x.paiId === pastaId)) {
+    pastas.push(p.id);
+    const sub = coletarDescendentes(p.id);
+    pastas.push(...sub.pastas);
+    figurinhasIds.push(...sub.figurinhas);
+  }
+  figurinhasIds.push(...estado.figurinhas.filter(f => f.pastaId === pastaId).map(f => f.id));
+  return { pastas, figurinhas: figurinhasIds };
+}
+
+async function excluirPasta(id) {
+  const pasta = estado.pastas.find(p => p.id === id);
+  if (!pasta) return;
+  const { pastas: subPastas, figurinhas: subFigs } = coletarDescendentes(id);
+  let msg = `Excluir a pasta "${pasta.nome}"?`;
+  if (subPastas.length || subFigs.length) {
+    const partes = [];
+    if (subPastas.length) partes.push(subPastas.length + (subPastas.length === 1 ? ' subpasta' : ' subpastas'));
+    if (subFigs.length) partes.push(subFigs.length + (subFigs.length === 1 ? ' figurinha' : ' figurinhas'));
+    msg += ` Isso também apaga ${partes.join(' e ')} dentro dela. Não pode ser desfeito.`;
+  } else {
+    msg += ' Isso não pode ser desfeito.';
+  }
+  if (!confirm(msg)) return;
+  for (const figId of subFigs) {
+    await apagarRegistro('figurinhas', figId);
+    await apagarRegistro('projetos', figId).catch(() => {});
+  }
+  for (const pId of subPastas) await apagarRegistro('pastas', pId);
+  await apagarRegistro('pastas', id);
+  if (estado.pastaAtual === id || subPastas.includes(estado.pastaAtual)) {
+    estado.pastaAtual = normPastaId(pasta.paiId);
+  }
+  await carregar();
+  avisar('Pasta excluída');
+}
+
+$('#grade').addEventListener('click', async (e) => {
+  const alvo = e.target.closest('button');
+  if (!alvo) return;
+  const { fav, editar, copiar, mover, renomear, apagar } = alvo.dataset;
+  if (fav) {
+    const f = await lerUm('figurinhas', fav);
+    f.favorito = !f.favorito;
+    await salvarRegistro('figurinhas', f);
+    await carregar();
+  } else if (editar) {
+    abrirEditor(editar);
+  } else if (copiar) {
+    // sem await antes: Safari exige que o ClipboardItem nasça no gesto
+    copiarBlob(lerUm('figurinhas', copiar).then(f => paraPng(f.blob)));
+  } else if (mover) {
+    const f = await lerUm('figurinhas', mover);
+    abrirMover(f);
+  } else if (renomear) {
+    const f = await lerUm('figurinhas', renomear);
+    abrirRenomear('figurinha', f);
+  } else if (apagar) {
+    const f = await lerUm('figurinhas', apagar);
+    if (confirm('Excluir "' + f.nome + '"? Isso não pode ser desfeito.')) {
+      await apagarRegistro('figurinhas', apagar);
+      await apagarRegistro('projetos', apagar).catch(() => {});
+      await carregar();
+      avisar('Figurinha excluída');
+    }
+  }
+});
+
+/* ----- renomear figurinha ou pasta (diálogo compartilhado) ----- */
+let renomearAlvo = null; // { tipo: 'figurinha' | 'pasta', id }
+function abrirRenomear(tipo, item) {
+  renomearAlvo = { tipo, id: item.id };
+  $('#titulo-renomear').textContent = tipo === 'pasta' ? 'Renomear pasta' : 'Renomear figurinha';
+  $('#rotulo-renomear').textContent = tipo === 'pasta' ? 'Nome da pasta' : 'Nome da figurinha';
+  $('#renomear-nome').value = item.nome;
+  $('#dlg-renomear').showModal();
+  requestAnimationFrame(() => $('#renomear-nome').select());
+}
+$('#confirmar-renomear').addEventListener('click', async () => {
+  const novoNome = $('#renomear-nome').value.trim();
+  if (!novoNome || !renomearAlvo) { $('#dlg-renomear').close(); return; }
+  const lojaAlvo = renomearAlvo.tipo === 'pasta' ? 'pastas' : 'figurinhas';
+  const item = await lerUm(lojaAlvo, renomearAlvo.id);
+  item.nome = novoNome.slice(0, 60);
+  await salvarRegistro(lojaAlvo, item);
+  const eraPasta = renomearAlvo.tipo === 'pasta';
+  renomearAlvo = null;
+  $('#dlg-renomear').close();
+  await carregar();
+  avisar(eraPasta ? 'Pasta renomeada' : 'Figurinha renomeada');
+});
+$('#renomear-nome').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); $('#confirmar-renomear').click(); }
+});
+
+/* ----- mover figurinha para outra pasta ----- */
+let moverAlvoId = null;
+function abrirMover(f) {
+  moverAlvoId = f.id;
+  preencherSelectPastas($('#mover-pasta'), f.pastaId);
+  $('#dlg-mover').showModal();
+}
+$('#confirmar-mover').addEventListener('click', async () => {
+  if (!moverAlvoId) { $('#dlg-mover').close(); return; }
+  const f = await lerUm('figurinhas', moverAlvoId);
+  f.pastaId = $('#mover-pasta').value || null;
+  await salvarRegistro('figurinhas', f);
+  moverAlvoId = null;
+  $('#dlg-mover').close();
+  await carregar();
+  avisar('Figurinha movida');
+});
+
+$('#busca').addEventListener('input', (e) => {
+  estado.filtro.texto = e.target.value;
+  desenharCaminho();
+  desenharGrade();
+});
+$('#chip-fav').addEventListener('click', (e) => {
+  estado.filtro.favoritos = !estado.filtro.favoritos;
+  e.currentTarget.setAttribute('aria-pressed', String(estado.filtro.favoritos));
+  desenharCaminho();
+  desenharGrade();
+});
+
+$$('[data-fechar]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+
+/* =========================================================
+   EDITOR
+   ========================================================= */
+const tela = $('#tela');
+const ctx = tela.getContext('2d');
+const TAM = 1024;
+
+function camadaTexto() {
+  return {
+    id: uid(), tipo: 'texto', texto: 'Seu texto', fonte: 'Bricolage Grotesque',
+    tamanho: 120, cor: '#ffffff', contornoCor: '#221a2e', contorno: 10, contornoAnterior: 10,
+    sombra: 0, sombraCor: '#000000',
+    x: TAM / 2, y: TAM * 0.78, rotacao: 0, escala: 1, opacidade: 1, visivel: true,
+  };
+}
+
+async function abrirEditor(figurinhaId) {
+  const fig = await lerUm('figurinhas', figurinhaId);
+  if (!fig) return;
+  const projeto = await lerUm('projetos', figurinhaId);
+
+  // Um projeto guarda as camadas sobre a IMAGEM ORIGINAL. A figurinha salva é
+  // a versão achatada; reabrir usando ela duplicaria os textos já desenhados.
+  let fonteImagem = fig;
+  let projetoUtil = projeto;
+  if (projeto && projeto.figurinhaOrigemId) {
+    const original = await lerUm('figurinhas', projeto.figurinhaOrigemId);
+    if (original) fonteImagem = original;
+    else projetoUtil = null; // original apagado: recomeça sobre a versão achatada
+  }
+  const img = await carregarImagem(fonteImagem.blob);
+
+  const camadas = projetoUtil ? JSON.parse(JSON.stringify(projetoUtil.camadas)) : [{
+    id: uid(), tipo: 'imagem', nome: fig.nome,
+    x: TAM / 2, y: TAM / 2, rotacao: 0, escala: 1, opacidade: 1, visivel: true,
+  }];
+
+  estado.editor = {
+    figurinhaId, nome: fig.nome, camadas,
+    imagem: img,
+    selecionada: camadas[0].id,
+    historico: [], futuro: [],
+  };
+  // escala inicial para a imagem caber no palco
+  const cImg = camadas.find(c => c.tipo === 'imagem');
+  if (cImg && !cImg.escalaBase) {
+    cImg.escalaBase = Math.min(TAM * 0.9 / img.naturalWidth, TAM * 0.9 / img.naturalHeight);
+  }
+
+  $('#galeria').classList.add('oculta');
+  $('#editor').classList.add('ativo');
+  $('#titulo-editor').textContent = fig.nome;
+  await garantirFontes();
+  sincronizar();
+}
+
+$('#btn-voltar').addEventListener('click', () => {
+  $('#editor').classList.remove('ativo');
+  $('#galeria').classList.remove('oculta');
+  estado.editor = null;
+});
+
+function carregarImagem(blob) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = (e) => { URL.revokeObjectURL(url); rej(e); };
+    img.src = url;
+  });
+}
+
+/* Nem toda fonte gratuita do Google Fonts tem peso 700 disponível; usar um
+   peso que não existe faz o navegador aplicar negrito sintético (borrado).
+   Este mapa usa o peso mais forte realmente publicado por família. */
+const PESO_FONTE = {
+  'Anton': 400, 'Archivo Black': 400, 'Bebas Neue': 400, 'Luckiest Guy': 400,
+  'Righteous': 400, 'Pacifico': 400, 'Permanent Marker': 400,
+  'Playfair Display': 800, 'Baloo 2': 700, 'Poppins': 700,
+  'Bricolage Grotesque': 800, 'Fredoka': 700, 'Caveat': 700, 'Inter': 600,
+};
+function pesoDaFonte(nome) { return PESO_FONTE[nome] || 700; }
+
+let fontesProntas = false;
+async function garantirFontes() {
+  if (fontesProntas) return;
+  const familias = Object.keys(PESO_FONTE);
+  try {
+    await Promise.all(familias.map(f => document.fonts.load(`${pesoDaFonte(f)} 100px "${f}"`)));
+    await document.fonts.ready;
+  } catch (e) { console.warn('Fontes não carregaram totalmente', e); }
+  fontesProntas = true;
+}
+
+function camadaSelecionada() {
+  const ed = estado.editor;
+  if (!ed) return null;
+  return ed.camadas.find(c => c.id === ed.selecionada) || null;
+}
+
+/* ----- histórico ----- */
+function registrar() {
+  const ed = estado.editor;
+  if (!ed) return;
+  ed.historico.push(JSON.stringify(ed.camadas));
+  if (ed.historico.length > 50) ed.historico.shift();
+  ed.futuro.length = 0;
+  atualizarBotoesHistorico();
+}
+function desfazer() {
+  const ed = estado.editor;
+  if (!ed || !ed.historico.length) return;
+  ed.futuro.push(JSON.stringify(ed.camadas));
+  ed.camadas = JSON.parse(ed.historico.pop());
+  if (!ed.camadas.some(c => c.id === ed.selecionada)) ed.selecionada = ed.camadas[0]?.id;
+  sincronizar();
+}
+function refazer() {
+  const ed = estado.editor;
+  if (!ed || !ed.futuro.length) return;
+  ed.historico.push(JSON.stringify(ed.camadas));
+  ed.camadas = JSON.parse(ed.futuro.pop());
+  if (!ed.camadas.some(c => c.id === ed.selecionada)) ed.selecionada = ed.camadas[0]?.id;
+  sincronizar();
+}
+function atualizarBotoesHistorico() {
+  const ed = estado.editor;
+  $('#btn-desfazer').disabled = !ed || !ed.historico.length;
+  $('#btn-refazer').disabled = !ed || !ed.futuro.length;
+}
+$('#btn-desfazer').addEventListener('click', desfazer);
+$('#btn-refazer').addEventListener('click', refazer);
+document.addEventListener('keydown', (e) => {
+  if (!estado.editor) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    e.shiftKey ? refazer() : desfazer();
+  }
+});
+
+/* ----- renderização ----- */
+function medirTexto(c) {
+  const linhas = String(c.texto).split('\n');
+  ctx.save();
+  ctx.font = `${pesoDaFonte(c.fonte)} ${c.tamanho}px "${c.fonte}", sans-serif`;
+  let largura = 0;
+  for (const l of linhas) largura = Math.max(largura, ctx.measureText(l).width);
+  ctx.restore();
+  const alturaLinha = c.tamanho * 1.15;
+  return { largura, altura: alturaLinha * linhas.length, linhas, alturaLinha };
+}
+
+function desenhar() {
+  const ed = estado.editor;
+  ctx.clearRect(0, 0, TAM, TAM);
+  if (!ed) return;
+  for (const c of ed.camadas) {
+    if (c.visivel === false) continue;
+    ctx.save();
+    ctx.globalAlpha = c.opacidade ?? 1;
+    ctx.translate(c.x, c.y);
+    ctx.rotate((c.rotacao || 0) * Math.PI / 180);
+    if (c.tipo === 'imagem') {
+      const img = ed.imagem;
+      const base = c.escalaBase || 1;
+      const w = img.naturalWidth * base * (c.escala || 1);
+      const h = img.naturalHeight * base * (c.escala || 1);
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    } else {
+      const m = medirTexto(c);
+      ctx.scale(c.escala || 1, c.escala || 1);
+      ctx.font = `${pesoDaFonte(c.fonte)} ${c.tamanho}px "${c.fonte}", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.miterLimit = 2;
+      const topo = -m.altura / 2 + m.alturaLinha / 2;
+      m.linhas.forEach((linha, i) => {
+        const y = topo + i * m.alturaLinha;
+        if (c.contorno > 0) {
+          ctx.strokeStyle = c.contornoCor;
+          ctx.lineWidth = c.contorno * 2;
+          ctx.strokeText(linha, 0, y);
+        }
+        if (c.sombra > 0) {
+          ctx.shadowColor = c.sombraCor;
+          ctx.shadowBlur = c.sombra;
+          ctx.shadowOffsetY = c.sombra / 3;
+        }
+        ctx.fillStyle = c.cor;
+        ctx.fillText(linha, 0, y);
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      });
+    }
+    ctx.restore();
+  }
+}
+
+/* ----- verificação real de transparência (canal alfa) -----
+   O canvas NUNCA recebe um fillRect de fundo antes de exportar — desenhar()
+   só faz clearRect() e depois desenha as camadas. Esta função confere isso
+   lendo o canal alfa de verdade, em vez de apenas confiar no código:
+   testa os 4 cantos (área quase sempre fora da arte) e faz uma varredura
+   amostrada do canvas inteiro atrás de qualquer pixel não totalmente opaco. */
+function testarTransparenciaCanvas() {
+  let dados;
+  try {
+    dados = ctx.getImageData(0, 0, TAM, TAM).data;
+  } catch (err) {
+    // Canvas "tainted" por alguma fonte cross-origin — não dá para inspecionar.
+    return { ok: null, motivo: 'inspecao-bloqueada' };
+  }
+  const cantos = [
+    [0, 0], [TAM - 1, 0], [0, TAM - 1], [TAM - 1, TAM - 1],
+  ].map(([x, y]) => {
+    const i = (y * TAM + x) * 4;
+    return dados[i + 3]; // alfa
+  });
+  const cantosTransparentes = cantos.every(a => a === 0);
+
+  let achouAlfaMenorQue255 = false;
+  for (let i = 3; i < dados.length; i += 4 * 97) { // amostragem, não pixel a pixel
+    if (dados[i] < 255) { achouAlfaMenorQue255 = true; break; }
+  }
+
+  if (cantosTransparentes) return { ok: true, motivo: 'cantos-transparentes' };
+  if (achouAlfaMenorQue255) return { ok: true, motivo: 'alfa-parcial-detectado' };
+  return { ok: false, motivo: 'nenhum-pixel-transparente' };
+}
+
+function atualizarSeloTransparencia() {
+  const selo = $('#selo-transparencia');
+  if (!estado.editor) { selo.textContent = ''; selo.className = 'selo-transparencia'; return; }
+  const r = testarTransparenciaCanvas();
+  if (r.ok === true) {
+    selo.textContent = 'Transparência preservada ✓';
+    selo.className = 'selo-transparencia ok';
+  } else if (r.ok === false) {
+    selo.textContent = 'Nenhum pixel transparente encontrado — a arte pode estar cobrindo todo o quadro';
+    selo.className = 'selo-transparencia alerta';
+  } else {
+    selo.textContent = '';
+    selo.className = 'selo-transparencia';
+  }
+  return r;
+}
+
+/* ----- lista de camadas e inspetores ----- */
+function sincronizar() {
+  desenhar();
+  desenharListaCamadas();
+  preencherInspetor();
+  atualizarBotoesHistorico();
+  atualizarSeloTransparencia();
+}
+
+function desenharListaCamadas() {
+  const ed = estado.editor;
+  const ul = $('#lista-camadas');
+  ul.innerHTML = '';
+  if (!ed) return;
+  [...ed.camadas].reverse().forEach((c) => {
+    const li = document.createElement('li');
+    if (c.id === ed.selecionada) li.classList.add('sel');
+    const rotulo = c.tipo === 'imagem' ? '🖼 ' + (c.nome || 'Imagem') : '🅣 ' + (c.texto || '').split('\n')[0].slice(0, 22);
+    li.innerHTML = `
+      <button class="rotulo" data-sel="${c.id}">${escapar(rotulo)}</button>
+      <button class="mini" data-vis="${c.id}" title="Mostrar/ocultar">${c.visivel === false ? '◻' : '◼'}</button>
+      <button class="mini" data-sobe="${c.id}" title="Subir">▲</button>
+      <button class="mini" data-desce="${c.id}" title="Descer">▼</button>`;
+    ul.appendChild(li);
+  });
+}
+
+$('#lista-camadas').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const ed = estado.editor;
+  const { sel, vis, sobe, desce } = b.dataset;
+  if (sel) { ed.selecionada = sel; sincronizar(); return; }
+  const id = vis || sobe || desce;
+  const i = ed.camadas.findIndex(c => c.id === id);
+  if (i < 0) return;
+  registrar();
+  if (vis) ed.camadas[i].visivel = ed.camadas[i].visivel === false;
+  if (sobe && i < ed.camadas.length - 1) ed.camadas.splice(i + 1, 0, ed.camadas.splice(i, 1)[0]);
+  if (desce && i > 0) ed.camadas.splice(i - 1, 0, ed.camadas.splice(i, 1)[0]);
+  sincronizar();
+});
+
+$('#btn-add-texto').addEventListener('click', () => {
+  const ed = estado.editor;
+  if (!ed) return;
+  registrar();
+  const c = camadaTexto();
+  ed.camadas.push(c);
+  ed.selecionada = c.id;
+  sincronizar();
+});
+
+$('#btn-remover-camada').addEventListener('click', () => {
+  const ed = estado.editor;
+  const c = camadaSelecionada();
+  if (!ed || !c) return;
+  if (c.tipo === 'imagem') { avisar('A imagem base não pode ser removida'); return; }
+  registrar();
+  ed.camadas = ed.camadas.filter(x => x.id !== c.id);
+  ed.selecionada = ed.camadas[ed.camadas.length - 1]?.id;
+  sincronizar();
+});
+
+$('#btn-centralizar').addEventListener('click', () => {
+  const c = camadaSelecionada();
+  if (!c) return;
+  registrar();
+  c.x = TAM / 2; c.y = TAM / 2;
+  sincronizar();
+});
+
+function preencherInspetor() {
+  const c = camadaSelecionada();
+  const painelTexto = $('#inspetor-texto');
+  const painelComum = $('#inspetor-comum');
+  if (!c) { painelTexto.classList.add('oculto'); painelComum.classList.add('oculto'); return; }
+  painelComum.classList.remove('oculto');
+  painelTexto.classList.toggle('oculto', c.tipo !== 'texto');
+
+  if (c.tipo === 'texto') {
+    $('#txt-conteudo').value = c.texto;
+    $('#txt-fonte').value = c.fonte;
+    $('#txt-tamanho').value = c.tamanho; $('#v-tamanho').textContent = c.tamanho;
+    $('#txt-cor').value = c.cor;
+    $('#txt-contorno-cor').value = c.contornoCor;
+    const temContorno = (c.contorno || 0) > 0;
+    $('#txt-contorno-ativo').checked = temContorno;
+    const espessuraExibida = temContorno ? c.contorno : (c.contornoAnterior || 10);
+    $('#txt-contorno').value = espessuraExibida;
+    $('#txt-contorno').disabled = !temContorno;
+    $('#v-contorno').textContent = temContorno ? c.contorno : '0 (desligado)';
+    $('#txt-sombra').value = c.sombra; $('#v-sombra').textContent = c.sombra;
+    $('#txt-sombra-cor').value = c.sombraCor;
+  }
+  $('#c-rotacao').value = c.rotacao || 0; $('#v-rotacao').textContent = (c.rotacao || 0) + '°';
+  $('#c-escala').value = Math.round((c.escala || 1) * 100); $('#v-escala').textContent = Math.round((c.escala || 1) * 100) + '%';
+  $('#c-opacidade').value = Math.round((c.opacidade ?? 1) * 100); $('#v-opacidade').textContent = Math.round((c.opacidade ?? 1) * 100) + '%';
+}
+
+/* Alterações contínuas: registra uma vez no início do gesto */
+let gestoAberto = false;
+function inicioGesto() { if (!gestoAberto) { registrar(); gestoAberto = true; } }
+function fimGesto() { gestoAberto = false; }
+['pointerup', 'change', 'blur'].forEach(ev => document.addEventListener(ev, fimGesto, true));
+
+function ligarControle(seletor, aplicar, comGesto = true) {
+  const el = $(seletor);
+  el.addEventListener('input', () => {
+    const c = camadaSelecionada();
+    if (!c) return;
+    if (comGesto) inicioGesto(); else registrar();
+    aplicar(c, el.value);
+    desenhar();
+    preencherInspetor();
+    desenharListaCamadas();
+  });
+}
+ligarControle('#txt-conteudo', (c, v) => c.texto = v);
+ligarControle('#txt-fonte', (c, v) => c.fonte = v, false);
+ligarControle('#txt-tamanho', (c, v) => c.tamanho = Number(v));
+ligarControle('#txt-cor', (c, v) => c.cor = v);
+ligarControle('#txt-contorno-cor', (c, v) => c.contornoCor = v);
+ligarControle('#txt-contorno', (c, v) => { c.contorno = Number(v); c.contornoAnterior = Number(v); });
+
+$('#txt-contorno-ativo').addEventListener('change', () => {
+  const c = camadaSelecionada();
+  if (!c) return;
+  registrar();
+  if ($('#txt-contorno-ativo').checked) {
+    c.contorno = c.contornoAnterior || 10;
+  } else {
+    c.contornoAnterior = c.contorno > 0 ? c.contorno : (c.contornoAnterior || 10);
+    c.contorno = 0;
+  }
+  sincronizar();
+});
+ligarControle('#txt-sombra', (c, v) => c.sombra = Number(v));
+ligarControle('#txt-sombra-cor', (c, v) => c.sombraCor = v);
+ligarControle('#c-rotacao', (c, v) => c.rotacao = Number(v));
+ligarControle('#c-escala', (c, v) => c.escala = Number(v) / 100);
+ligarControle('#c-opacidade', (c, v) => c.opacidade = Number(v) / 100);
+
+/* ----- arrastar no canvas ----- */
+let arrasto = null;
+
+function pontoNaTela(e) {
+  const r = tela.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (TAM / r.width), y: (e.clientY - r.top) * (TAM / r.height) };
+}
+
+function caixaDaCamada(c) {
+  const ed = estado.editor;
+  if (c.tipo === 'imagem') {
+    const base = c.escalaBase || 1;
+    return {
+      w: ed.imagem.naturalWidth * base * (c.escala || 1),
+      h: ed.imagem.naturalHeight * base * (c.escala || 1),
+    };
+  }
+  const m = medirTexto(c);
+  return { w: m.largura * (c.escala || 1), h: m.altura * (c.escala || 1) };
+}
+
+function acertou(c, p) {
+  const { w, h } = caixaDaCamada(c);
+  const dx = p.x - c.x, dy = p.y - c.y;
+  const a = -(c.rotacao || 0) * Math.PI / 180;
+  const lx = dx * Math.cos(a) - dy * Math.sin(a);
+  const ly = dx * Math.sin(a) + dy * Math.cos(a);
+  return Math.abs(lx) <= w / 2 + 8 && Math.abs(ly) <= h / 2 + 8;
+}
+
+tela.addEventListener('pointerdown', (e) => {
+  const ed = estado.editor;
+  if (!ed) return;
+  const p = pontoNaTela(e);
+  let alvo = null;
+  for (let i = ed.camadas.length - 1; i >= 0; i--) {
+    const c = ed.camadas[i];
+    if (c.visivel === false) continue;
+    if (acertou(c, p)) { alvo = c; break; }
+  }
+  if (!alvo) return;
+  ed.selecionada = alvo.id;
+  registrar();
+  arrasto = { id: alvo.id, dx: p.x - alvo.x, dy: p.y - alvo.y };
+  tela.setPointerCapture(e.pointerId);
+  sincronizar();
+});
+
+tela.addEventListener('pointermove', (e) => {
+  if (!arrasto) return;
+  const ed = estado.editor;
+  const c = ed.camadas.find(x => x.id === arrasto.id);
+  if (!c) return;
+  const p = pontoNaTela(e);
+  c.x = p.x - arrasto.dx;
+  c.y = p.y - arrasto.dy;
+  desenhar();
+});
+
+['pointerup', 'pointercancel'].forEach(ev => tela.addEventListener(ev, () => { arrasto = null; atualizarSeloTransparencia(); }));
+
+/* =========================================================
+   EXPORTAR: copiar, baixar, compartilhar, salvar
+   ========================================================= */
+function telaParaBlob() {
+  return new Promise((res, rej) => {
+    tela.toBlob(b => b ? res(b) : rej(new Error('toBlob falhou')), 'image/png');
+  });
+}
+
+/* Garante image/png: a área de transferência só aceita PNG de forma
+   confiável, e JPEG não tem transparência. */
+async function paraPng(blob) {
+  if (blob.type === 'image/png') return blob;
+  const img = await carregarImagem(blob);
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('toBlob falhou')), 'image/png'));
+}
+
+async function copiarBlob(blobOuPromessa, verificacao) {
+  // Chamado dentro do gesto do usuário: o ClipboardItem recebe a promessa
+  // diretamente, exigência do Safari.
+  const sufixo = verificacao && verificacao.ok === true ? ' — transparência preservada ✓' : '';
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error('sem Clipboard API');
+    const promessa = Promise.resolve(blobOuPromessa);
+    const item = new ClipboardItem({ 'image/png': promessa });
+    await navigator.clipboard.write([item]);
+    avisar('Figurinha copiada' + sufixo + '. Cole no Instagram.');
+    return true;
+  } catch (err) {
+    console.warn('Copiar falhou', err);
+    const blob = await Promise.resolve(blobOuPromessa);
+    const url = URL.createObjectURL(blob);
+    const img = $('#img-copia');
+    img.onload = () => URL.revokeObjectURL(url);
+    img.src = url;
+    $('#dlg-copia').showModal();
+    return false;
+  }
+}
+
+$('#btn-copiar').addEventListener('click', () => {
+  if (!estado.editor) return;
+  const r = atualizarSeloTransparencia(); // testa o alfa do canvas ANTES de gerar o PNG
+  copiarBlob(telaParaBlob(), r);
+});
+
+$('#btn-baixar').addEventListener('click', async () => {
+  if (!estado.editor) return;
+  const r = atualizarSeloTransparencia(); // testa o alfa do canvas ANTES de gerar o PNG
+  const blob = await telaParaBlob();
+  const nome = (estado.editor.nome || 'figurinha').replace(/[^\w\-]+/g, '-') + '.png';
+  const sufixoTransparencia = r.ok === true ? ' — transparência preservada ✓' : '';
+  try {
+    const downloads = await window.claude?.use?.('downloads');
+    if (downloads) {
+      await downloads.save({ filename: nome, data: blob });
+      avisar('PNG transparente salvo' + sufixoTransparencia);
+      return;
+    }
+  } catch (err) {
+    if (err && err.code === 'declined') return;
+    console.warn('downloads falhou', err);
+  }
+  // Fora do claude.ai: download direto pelo navegador
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nome; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  avisar('PNG transparente salvo' + sufixoTransparencia);
+});
+
+$('#btn-compartilhar').addEventListener('click', async () => {
+  if (!estado.editor) return;
+  const blob = await telaParaBlob();
+  const arquivo = new File([blob], (estado.editor.nome || 'figurinha') + '.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+    try { await navigator.share({ files: [arquivo] }); } catch (e) { /* cancelado */ }
+  } else {
+    avisar('Compartilhamento indisponível neste navegador');
+  }
+});
+
+$('#btn-salvar').addEventListener('click', async () => {
+  if (!estado.editor) return;
+  const fig = await lerUm('figurinhas', estado.editor.figurinhaId);
+  $('#salvar-nome').value = (fig?.nome || 'figurinha') + ' editada';
+  preencherSelectPastas($('#salvar-pasta'), fig?.pastaId ?? estado.pastaAtual);
+  $('#dlg-salvar').showModal();
+});
+
+$('#confirmar-salvar').addEventListener('click', async () => {
+  const ed = estado.editor;
+  if (!ed) return;
+  const blob = await telaParaBlob();
+  const novoId = uid();
+  const fig = {
+    id: novoId,
+    nome: ($('#salvar-nome').value || 'figurinha').slice(0, 60),
+    blob,
+    tipo: 'image/png',
+    largura: TAM,
+    altura: TAM,
+    pastaId: $('#salvar-pasta').value || null,
+    favorito: false,
+    criadoEm: Date.now(),
+    origem: 'editado',
+    origemId: ed.figurinhaId,
+  };
+  await salvarRegistro('figurinhas', fig);
+  await salvarRegistro('projetos', {
+    id: novoId,
+    figurinhaOrigemId: ed.figurinhaId,
+    camadas: ed.camadas,
+    largura: TAM, altura: TAM,
+    atualizadoEm: Date.now(),
+  });
+  $('#dlg-salvar').close();
+  await carregar();
+  avisar('Salva como nova figurinha');
+});
+
+/* ---------------- início ---------------- */
+carregar().catch(err => {
+  console.error(err);
+  avisar('Não foi possível abrir o armazenamento local');
+});
+</script>
+</body>
+</html>
