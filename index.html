@@ -567,7 +567,7 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
           </div>
           <div class="campo">
             <label for="c-escala">Tamanho da camada <span id="v-escala"></span></label>
-            <input type="range" id="c-escala" min="10" max="300" step="1">
+            <input type="range" id="c-escala" min="10" max="500" step="1">
           </div>
           <div class="campo">
             <label for="c-opacidade">Opacidade <span id="v-opacidade"></span></label>
@@ -1340,14 +1340,67 @@ function desenhar() {
     }
     ctx.restore();
   }
+  desenharSelecao(ed);
 }
 
-/* ----- remoção de fundo (chroma-key pelos cantos da imagem) -----
-   Não usa nenhum modelo de IA — funciona amostrando a cor dos 4 cantos
-   da foto original e tornando transparente tudo que for parecido com
-   essa cor, com uma faixa de suavização na borda pra não serrilhar.
-   Sempre parte da imagem ORIGINAL (nunca da já processada), pra dar
-   pra ajustar a sensibilidade e tentar de novo sem acumular erro. */
+/* ----- caixa de seleção com alças de transformação ----- */
+const RAIO_ALCA = 9;
+const DIST_ALCA_ROT = 34;
+
+function pontoLocalParaMundo(c, lx, ly) {
+  const t = (c.rotacao || 0) * Math.PI / 180;
+  return {
+    x: c.x + lx * Math.cos(t) - ly * Math.sin(t),
+    y: c.y + lx * Math.sin(t) + ly * Math.cos(t),
+  };
+}
+
+function alcasDaCamada(c) {
+  const { w, h } = caixaDaCamada(c);
+  const hw = w / 2, hh = h / 2;
+  const pontosLocais = [
+    { tipo: 'redim', lx: -hw, ly: -hh }, { tipo: 'redim', lx: 0, ly: -hh }, { tipo: 'redim', lx: hw, ly: -hh },
+    { tipo: 'redim', lx: -hw, ly: 0 }, { tipo: 'redim', lx: hw, ly: 0 },
+    { tipo: 'redim', lx: -hw, ly: hh }, { tipo: 'redim', lx: 0, ly: hh }, { tipo: 'redim', lx: hw, ly: hh },
+    { tipo: 'rotacao', lx: 0, ly: -hh - DIST_ALCA_ROT },
+  ];
+  return pontosLocais.map(p => ({ tipo: p.tipo, ...pontoLocalParaMundo(c, p.lx, p.ly) }));
+}
+
+function desenharSelecao(ed) {
+  if (!ed || !ed.selecionada) return;
+  const c = ed.camadas.find(x => x.id === ed.selecionada);
+  if (!c || c.visivel === false) return;
+  const { w, h } = caixaDaCamada(c);
+
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate((c.rotacao || 0) * Math.PI / 180);
+  ctx.strokeStyle = '#7B4FE0';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(-w / 2, -h / 2, w, h);
+  ctx.setLineDash([]);
+  if (!c.bloqueada) {
+    ctx.beginPath();
+    ctx.moveTo(0, -h / 2);
+    ctx.lineTo(0, -h / 2 - DIST_ALCA_ROT);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  if (c.bloqueada) return;
+  for (const a of alcasDaCamada(c)) {
+    ctx.beginPath();
+    ctx.fillStyle = a.tipo === 'rotacao' ? '#7B4FE0' : '#fff';
+    ctx.strokeStyle = '#7B4FE0';
+    ctx.lineWidth = 2;
+    ctx.arc(a.x, a.y, RAIO_ALCA, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
 /* ----- remoção de fundo (preenchimento por contiguidade a partir das bordas) -----
    Não usa nenhum modelo de IA. Começa pelos pixels da BORDA da imagem e vai
    "andando" pelo fundo, comparando cada pixel com o vizinho já confirmado
@@ -1831,10 +1884,21 @@ document.addEventListener('keydown', (e) => {
 
 /* ----- arrastar no canvas ----- */
 let arrasto = null;
+let transformando = null;
 
 function pontoNaTela(e) {
   const r = tela.getBoundingClientRect();
   return { x: (e.clientX - r.left) * (TAM / r.width), y: (e.clientY - r.top) * (TAM / r.height) };
+}
+
+function distancia(p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
+
+function alcaAtingida(c, p) {
+  if (!c || c.bloqueada) return null;
+  for (const a of alcasDaCamada(c)) {
+    if (distancia(p, a) <= RAIO_ALCA + 6) return a.tipo;
+  }
+  return null;
 }
 
 function caixaDaCamada(c) {
@@ -1865,6 +1929,36 @@ tela.addEventListener('pointerdown', (e) => {
   const ed = estado.editor;
   if (!ed) return;
   const p = pontoNaTela(e);
+
+  // 1) alças da camada já selecionada têm prioridade sobre re-selecionar
+  const camadaAtual = ed.camadas.find(x => x.id === ed.selecionada);
+  if (camadaAtual && camadaAtual.visivel !== false) {
+    const tipoAlca = alcaAtingida(camadaAtual, p);
+    if (tipoAlca === 'redim') {
+      registrar();
+      transformando = {
+        modo: 'escala', id: camadaAtual.id,
+        cx: camadaAtual.x, cy: camadaAtual.y,
+        distInicial: Math.max(1, distancia(p, { x: camadaAtual.x, y: camadaAtual.y })),
+        escalaInicial: camadaAtual.escala || 1,
+      };
+      tela.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (tipoAlca === 'rotacao') {
+      registrar();
+      transformando = {
+        modo: 'rotacao', id: camadaAtual.id,
+        cx: camadaAtual.x, cy: camadaAtual.y,
+        anguloInicial: Math.atan2(p.y - camadaAtual.y, p.x - camadaAtual.x),
+        rotacaoInicial: camadaAtual.rotacao || 0,
+      };
+      tela.setPointerCapture(e.pointerId);
+      return;
+    }
+  }
+
+  // 2) senão, seleciona/move a camada tocada
   let alvo = null;
   for (let i = ed.camadas.length - 1; i >= 0; i--) {
     const c = ed.camadas[i];
@@ -1881,8 +1975,26 @@ tela.addEventListener('pointerdown', (e) => {
 });
 
 tela.addEventListener('pointermove', (e) => {
-  if (!arrasto) return;
   const ed = estado.editor;
+  if (!ed) return;
+  if (transformando) {
+    const c = ed.camadas.find(x => x.id === transformando.id);
+    if (!c) return;
+    const p = pontoNaTela(e);
+    if (transformando.modo === 'escala') {
+      const distAtual = distancia(p, { x: transformando.cx, y: transformando.cy });
+      c.escala = Math.max(0.05, Math.min(5, transformando.escalaInicial * (distAtual / transformando.distInicial)));
+    } else if (transformando.modo === 'rotacao') {
+      const anguloAtual = Math.atan2(p.y - transformando.cy, p.x - transformando.cx);
+      const delta = (anguloAtual - transformando.anguloInicial) * 180 / Math.PI;
+      c.rotacao = Math.round(transformando.rotacaoInicial + delta);
+    }
+    desenhar();
+    $('#c-rotacao').value = c.rotacao || 0; $('#v-rotacao').textContent = (c.rotacao || 0) + '°';
+    $('#c-escala').value = Math.round((c.escala || 1) * 100); $('#v-escala').textContent = Math.round((c.escala || 1) * 100) + '%';
+    return;
+  }
+  if (!arrasto) return;
   const c = ed.camadas.find(x => x.id === arrasto.id);
   if (!c) return;
   const p = pontoNaTela(e);
@@ -1891,7 +2003,11 @@ tela.addEventListener('pointermove', (e) => {
   desenhar();
 });
 
-['pointerup', 'pointercancel'].forEach(ev => tela.addEventListener(ev, () => { arrasto = null; atualizarSeloTransparencia(); }));
+['pointerup', 'pointercancel'].forEach(ev => tela.addEventListener(ev, () => {
+  arrasto = null;
+  transformando = null;
+  atualizarSeloTransparencia();
+}));
 
 /* =========================================================
    EXPORTAR: copiar, baixar, compartilhar, salvar
