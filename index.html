@@ -298,6 +298,12 @@ input[type="color"]{width:100%;height:34px;border:1px solid var(--borda);border-
 }
 .formato-toggle button.ativo{background:var(--tinta);color:var(--fundo);border-color:var(--tinta)}
 
+.corte-area{
+  display:flex;justify-content:center;background:repeating-conic-gradient(#00000012 0% 25%, transparent 0% 50%) 50% / 20px 20px;
+  border:1px solid var(--borda);border-radius:var(--raio);padding:10px;margin-bottom:12px;
+}
+#tela-corte{max-width:100%;touch-action:none;border-radius:6px}
+
 .painel-projeto p{font-size:13px;color:var(--tinta-fraca);margin:4px 0}
 .painel-projeto strong{color:var(--tinta)}
 
@@ -329,6 +335,7 @@ dialog{
   color:var(--tinta);max-width:min(420px,92vw);padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.3);
 }
 dialog::backdrop{background:rgba(25,18,35,.55)}
+#dlg-cortar{max-width:min(560px,94vw)}
 dialog h3{font-family:var(--display);margin:0 0 10px}
 .dialogo-acoes{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 #aviso{
@@ -402,7 +409,7 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
         <button class="ferr-btn ativa" data-ferr="selecionar" title="Selecionar">↖</button>
         <button class="ferr-btn" id="ferr-imagem" title="Adicionar imagem">🖼</button>
         <button class="ferr-btn" id="ferr-texto" title="Adicionar texto">🅣</button>
-        <button class="ferr-btn" id="ferr-cortar" title="Cortar — em breve" disabled>✂</button>
+        <button class="ferr-btn" id="ferr-cortar" title="Cortar">✂</button>
         <button class="ferr-btn" id="ferr-fundo" title="Remover fundo">🪄</button>
         <button class="ferr-btn" id="ferr-formas" title="Formas — em breve" disabled>◆</button>
         <button class="ferr-btn" id="ferr-camadas" title="Camadas">▤</button>
@@ -442,6 +449,7 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
             <button class="btn btn-pop" id="btn-remover-fundo">🪄 Remover fundo</button>
             <button class="btn" id="btn-restaurar-fundo">Restaurar imagem original</button>
           </div>
+          <p class="dica">"Restaurar imagem original" desfaz tanto a remoção de fundo quanto qualquer corte já aplicado nesta camada, voltando à imagem como foi carregada nesta sessão de edição.</p>
         </div>
 
         <div class="painel">
@@ -601,6 +609,26 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
   <div class="dialogo-acoes">
     <button class="btn" data-fechar>Cancelar</button>
     <button class="btn btn-pop" id="confirmar-salvar">Salvar</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-cortar">
+  <h3>Cortar imagem</h3>
+  <div class="corte-area">
+    <canvas id="tela-corte"></canvas>
+  </div>
+  <div class="formato-toggle" id="corte-proporcoes">
+    <button data-prop="livre" class="ativo">Livre</button>
+    <button data-prop="original">Original</button>
+    <button data-prop="1:1">1:1</button>
+    <button data-prop="4:5">4:5</button>
+    <button data-prop="16:9">16:9</button>
+    <button data-prop="9:16">9:16</button>
+  </div>
+  <p class="dica">Arraste dentro do quadro para mover o recorte, ou pelos cantos/bordas para redimensionar.</p>
+  <div class="dialogo-acoes">
+    <button class="btn" data-fechar>Cancelar</button>
+    <button class="btn btn-pop" id="corte-aplicar">Aplicar corte</button>
   </div>
 </dialog>
 
@@ -1697,6 +1725,181 @@ $('#ferr-camadas').addEventListener('click', () => {
   $('#painel-camadas').scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
 
+/* ----- ferramenta de corte (crop) -----
+   Trabalha sobre a imagem NATURAL da camada (entrada.atual), num canvas à
+   parte dentro do diálogo. Nunca mexe em entrada.original — assim
+   "Remover fundo" continua partindo sempre da foto original de verdade,
+   mesmo depois de um corte. O corte em si guarda uma cópia da imagem de
+   antes na primeira vez, pra dar pra desfazer com "Restaurar imagem
+   original" (mesmo botão do painel de Remover fundo). */
+let corte = null; // { imgOrigem, escala, x, y, w, h, camadaId }
+const telaCorte = $('#tela-corte');
+const ctxCorte = telaCorte.getContext('2d');
+const CORTE_MAX = 520;
+
+function abrirCorte() {
+  const c = camadaSelecionada();
+  if (!c || c.tipo !== 'imagem') { avisar('Selecione uma camada de imagem para cortar.'); return; }
+  const entrada = estado.editor.imagens[c.imagemId];
+  if (!entrada) return;
+  const img = entrada.atual;
+  const escala = Math.min(1, CORTE_MAX / img.naturalWidth, CORTE_MAX / img.naturalHeight);
+  telaCorte.width = Math.round(img.naturalWidth * escala);
+  telaCorte.height = Math.round(img.naturalHeight * escala);
+  corte = {
+    imgOrigem: img, escala, camadaId: c.id,
+    x: 0, y: 0, w: img.naturalWidth, h: img.naturalHeight,
+    proporcao: null,
+  };
+  $$('#corte-proporcoes button').forEach(b => b.classList.toggle('ativo', b.dataset.prop === 'livre'));
+  desenharCorte();
+  $('#dlg-cortar').showModal();
+}
+$('#ferr-cortar').addEventListener('click', abrirCorte);
+
+function desenharCorte() {
+  if (!corte) return;
+  const e = corte.escala;
+  ctxCorte.clearRect(0, 0, telaCorte.width, telaCorte.height);
+  ctxCorte.drawImage(corte.imgOrigem, 0, 0, telaCorte.width, telaCorte.height);
+
+  const rx = corte.x * e, ry = corte.y * e, rw = corte.w * e, rh = corte.h * e;
+
+  // escurece tudo fora do retângulo de corte
+  ctxCorte.save();
+  ctxCorte.fillStyle = 'rgba(20,14,28,.55)';
+  ctxCorte.fillRect(0, 0, telaCorte.width, ry);
+  ctxCorte.fillRect(0, ry + rh, telaCorte.width, telaCorte.height - ry - rh);
+  ctxCorte.fillRect(0, ry, rx, rh);
+  ctxCorte.fillRect(rx + rw, ry, telaCorte.width - rx - rw, rh);
+  ctxCorte.restore();
+
+  ctxCorte.strokeStyle = '#7B4FE0';
+  ctxCorte.lineWidth = 2;
+  ctxCorte.strokeRect(rx, ry, rw, rh);
+
+  const alcas = pontosAlcaCorte(rx, ry, rw, rh);
+  ctxCorte.fillStyle = '#fff';
+  for (const a of alcas) {
+    ctxCorte.beginPath();
+    ctxCorte.arc(a.x, a.y, 6, 0, Math.PI * 2);
+    ctxCorte.fill();
+    ctxCorte.stroke();
+  }
+}
+
+function pontosAlcaCorte(rx, ry, rw, rh) {
+  return [
+    { tipo: 'nw', x: rx, y: ry }, { tipo: 'n', x: rx + rw / 2, y: ry }, { tipo: 'ne', x: rx + rw, y: ry },
+    { tipo: 'w', x: rx, y: ry + rh / 2 }, { tipo: 'e', x: rx + rw, y: ry + rh / 2 },
+    { tipo: 'sw', x: rx, y: ry + rh }, { tipo: 's', x: rx + rw / 2, y: ry + rh }, { tipo: 'se', x: rx + rw, y: ry + rh },
+  ];
+}
+
+function pontoNoCorte(e) {
+  const r = telaCorte.getBoundingClientRect();
+  const escalaTela = telaCorte.width / r.width;
+  return { x: (e.clientX - r.left) * escalaTela, y: (e.clientY - r.top) * escalaTela };
+}
+
+function aplicarProporcao(prop) {
+  if (!corte) return;
+  corte.proporcao = prop;
+  if (prop === 'livre') return;
+  let alvo;
+  if (prop === 'original') alvo = corte.imgOrigem.naturalWidth / corte.imgOrigem.naturalHeight;
+  else { const [a, b] = prop.split(':').map(Number); alvo = a / b; }
+
+  const larguraMax = corte.imgOrigem.naturalWidth, alturaMax = corte.imgOrigem.naturalHeight;
+  const cx = corte.x + corte.w / 2, cy = corte.y + corte.h / 2;
+  let novaW = corte.w, novaH = novaW / alvo;
+  if (novaH > alturaMax) { novaH = alturaMax; novaW = novaH * alvo; }
+  if (novaW > larguraMax) { novaW = larguraMax; novaH = novaW / alvo; }
+  corte.w = novaW; corte.h = novaH;
+  corte.x = Math.min(Math.max(0, cx - novaW / 2), larguraMax - novaW);
+  corte.y = Math.min(Math.max(0, cy - novaH / 2), alturaMax - novaH);
+  desenharCorte();
+}
+$$('#corte-proporcoes button').forEach(b => {
+  b.addEventListener('click', () => {
+    $$('#corte-proporcoes button').forEach(x => x.classList.toggle('ativo', x === b));
+    aplicarProporcao(b.dataset.prop);
+  });
+});
+
+let arrastoCorte = null;
+telaCorte.addEventListener('pointerdown', (e) => {
+  if (!corte) return;
+  const p = pontoNoCorte(e);
+  const eSc = corte.escala;
+  const rx = corte.x * eSc, ry = corte.y * eSc, rw = corte.w * eSc, rh = corte.h * eSc;
+
+  for (const a of pontosAlcaCorte(rx, ry, rw, rh)) {
+    if (Math.hypot(p.x - a.x, p.y - a.y) <= 12) {
+      arrastoCorte = { modo: 'redim', alca: a.tipo, inicioX: corte.x, inicioY: corte.y, inicioW: corte.w, inicioH: corte.h, px: p.x, py: p.y };
+      telaCorte.setPointerCapture(e.pointerId);
+      return;
+    }
+  }
+  if (p.x >= rx && p.x <= rx + rw && p.y >= ry && p.y <= ry + rh) {
+    arrastoCorte = { modo: 'mover', inicioX: corte.x, inicioY: corte.y, px: p.x, py: p.y };
+    telaCorte.setPointerCapture(e.pointerId);
+  }
+});
+
+telaCorte.addEventListener('pointermove', (e) => {
+  if (!arrastoCorte || !corte) return;
+  const p = pontoNoCorte(e);
+  const eSc = corte.escala;
+  const dx = (p.x - arrastoCorte.px) / eSc, dy = (p.y - arrastoCorte.py) / eSc;
+  const larguraMax = corte.imgOrigem.naturalWidth, alturaMax = corte.imgOrigem.naturalHeight;
+
+  if (arrastoCorte.modo === 'mover') {
+    corte.x = Math.min(Math.max(0, arrastoCorte.inicioX + dx), larguraMax - corte.w);
+    corte.y = Math.min(Math.max(0, arrastoCorte.inicioY + dy), alturaMax - corte.h);
+  } else {
+    let { inicioX: x, inicioY: y, inicioW: w, inicioH: h } = arrastoCorte;
+    const a = arrastoCorte.alca;
+    if (a.includes('n')) { y = Math.max(0, y + dy); h = (arrastoCorte.inicioY + arrastoCorte.inicioH) - y; }
+    if (a.includes('s')) { h = Math.min(alturaMax - y, arrastoCorte.inicioH + dy); }
+    if (a.includes('w')) { x = Math.max(0, x + dx); w = (arrastoCorte.inicioX + arrastoCorte.inicioW) - x; }
+    if (a.includes('e')) { w = Math.min(larguraMax - x, arrastoCorte.inicioW + dx); }
+    if (w > 20 && h > 20) {
+      if (corte.proporcao && corte.proporcao !== 'livre') {
+        let alvo;
+        if (corte.proporcao === 'original') alvo = corte.imgOrigem.naturalWidth / corte.imgOrigem.naturalHeight;
+        else { const [pa, pb] = corte.proporcao.split(':').map(Number); alvo = pa / pb; }
+        h = w / alvo;
+      }
+      corte.x = x; corte.y = y; corte.w = w; corte.h = h;
+    }
+  }
+  desenharCorte();
+});
+['pointerup', 'pointercancel'].forEach(ev => telaCorte.addEventListener(ev, () => arrastoCorte = null));
+
+$('#corte-aplicar').addEventListener('click', () => {
+  if (!corte) return;
+  const ed = estado.editor;
+  const c = ed.camadas.find(x => x.id === corte.camadaId);
+  const entrada = c ? ed.imagens[c.imagemId] : null;
+  if (!c || !entrada) { $('#dlg-cortar').close(); return; }
+
+  const off = document.createElement('canvas');
+  off.width = Math.round(corte.w); off.height = Math.round(corte.h);
+  off.getContext('2d').drawImage(corte.imgOrigem, -corte.x, -corte.y);
+
+  const nova = new Image();
+  nova.onload = () => {
+    entrada.atual = nova;
+    registrar();
+    sincronizar();
+    avisar('Corte aplicado.');
+  };
+  nova.src = off.toDataURL('image/png');
+  $('#dlg-cortar').close();
+});
+
 $('#btn-add-texto').addEventListener('click', () => {
   const ed = estado.editor;
   if (!ed) return;
@@ -2152,7 +2355,7 @@ $('#confirmar-salvar').addEventListener('click', async () => {
   const imagensExtra = {};
   for (const [id, entrada] of Object.entries(ed.imagens)) {
     if (id === 'principal') continue;
-    try { imagensExtra[id] = await imagemParaBlob(entrada.original); }
+    try { imagensExtra[id] = await imagemParaBlob(entrada.atual); }
     catch (e) { console.warn('Falha ao salvar imagem extra', id, e); }
   }
 
@@ -2191,7 +2394,7 @@ function agendarAutosave() {
         imagensExtra = {};
         for (const [id, entrada] of Object.entries(ed.imagens)) {
           if (id === 'principal') continue;
-          imagensExtra[id] = await imagemParaBlob(entrada.original);
+          imagensExtra[id] = await imagemParaBlob(entrada.atual);
         }
         ultimasImagemIds = idsAtuais;
       }
