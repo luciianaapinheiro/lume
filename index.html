@@ -223,6 +223,19 @@ button{cursor:pointer}
 .ferr-btn.ativa{background:color-mix(in srgb,var(--pop) 14%,transparent);color:var(--pop);border-color:color-mix(in srgb,var(--pop) 30%,transparent)}
 .ferr-btn:disabled{opacity:.35;cursor:not-allowed}
 
+.menu-formas{
+  position:absolute;left:50%;top:0;z-index:30;
+  display:flex;gap:4px;background:var(--painel);border:1px solid var(--borda);
+  border-radius:10px;padding:6px;box-shadow:var(--sombra);
+}
+@media (max-width:899px){.menu-formas{left:0;top:100%;margin-top:6px}}
+@media (min-width:900px){.menu-formas{left:100%;top:0;margin-left:6px}}
+.menu-formas button{
+  width:34px;height:34px;border:1px solid var(--borda);background:var(--fundo2);
+  border-radius:8px;font-size:16px;display:grid;place-items:center;color:var(--tinta);
+}
+.menu-formas button:hover{background:var(--pop);color:#fff;border-color:var(--pop)}
+
 .zoom-bar{
   display:flex;align-items:center;justify-content:center;gap:8px;
   margin-top:10px;flex-wrap:wrap;
@@ -405,14 +418,20 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
     </div>
 
     <div class="editor-layout">
-      <nav class="ferramentas-rail" id="ferramentas-rail">
+      <nav class="ferramentas-rail" id="ferramentas-rail" style="position:relative">
         <button class="ferr-btn ativa" data-ferr="selecionar" title="Selecionar">↖</button>
         <button class="ferr-btn" id="ferr-imagem" title="Adicionar imagem">🖼</button>
         <button class="ferr-btn" id="ferr-texto" title="Adicionar texto">🅣</button>
         <button class="ferr-btn" id="ferr-cortar" title="Cortar">✂</button>
         <button class="ferr-btn" id="ferr-fundo" title="Remover fundo">🪄</button>
-        <button class="ferr-btn" id="ferr-formas" title="Formas — em breve" disabled>◆</button>
+        <button class="ferr-btn" id="ferr-formas" title="Formas">◆</button>
         <button class="ferr-btn" id="ferr-camadas" title="Camadas">▤</button>
+        <div class="menu-formas oculto" id="menu-formas">
+          <button data-forma="retangulo" title="Retângulo">▭</button>
+          <button data-forma="circulo" title="Círculo">●</button>
+          <button data-forma="linha" title="Linha">╱</button>
+          <button data-forma="estrela" title="Estrela">★</button>
+        </div>
       </nav>
 
       <div>
@@ -561,6 +580,18 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
             <input type="range" id="txt-sombra" min="0" max="60" step="1">
           </div>
           <div class="campo"><label for="txt-sombra-cor">Cor da sombra</label><input type="color" id="txt-sombra-cor"></div>
+        </div>
+
+        <div class="painel" id="inspetor-forma">
+          <h3>Forma</h3>
+          <div class="linha">
+            <div class="campo"><label for="forma-cor">Cor de preenchimento</label><input type="color" id="forma-cor"></div>
+            <div class="campo"><label for="forma-contorno-cor">Cor do contorno</label><input type="color" id="forma-contorno-cor"></div>
+          </div>
+          <div class="campo">
+            <label for="forma-contorno">Espessura do contorno <span id="v-forma-contorno"></span></label>
+            <input type="range" id="forma-contorno" min="0" max="40" step="1">
+          </div>
         </div>
 
         <div class="painel" id="inspetor-comum">
@@ -1165,6 +1196,15 @@ function camadaTexto() {
   };
 }
 
+const NOMES_FORMA = { retangulo: 'Retângulo', circulo: 'Círculo', linha: 'Linha', estrela: 'Estrela' };
+function camadaForma(formaTipo) {
+  return {
+    id: uid(), tipo: 'forma', formaTipo, nome: NOMES_FORMA[formaTipo] || 'Forma',
+    cor: '#7B4FE0', contornoCor: '#221a2e', contornoLargura: formaTipo === 'linha' ? 12 : 0,
+    x: TAM / 2, y: TAM / 2, rotacao: 0, escala: 1, opacidade: 1, visivel: true, bloqueada: false,
+  };
+}
+
 async function abrirEditor(figurinhaId) {
   const fig = await lerUm('figurinhas', figurinhaId);
   if (!fig) return;
@@ -1320,6 +1360,56 @@ function medirTexto(c) {
   return { largura, altura: alturaLinha * linhas.length, linhas, alturaLinha };
 }
 
+const TAMANHO_FORMA_BASE = 260;
+
+function desenharForma(c) {
+  const t = TAMANHO_FORMA_BASE;
+  if (c.formaTipo === 'retangulo') {
+    ctx.fillStyle = c.cor;
+    ctx.fillRect(-t / 2, -t / 2, t, t);
+    if (c.contornoLargura > 0) {
+      ctx.strokeStyle = c.contornoCor;
+      ctx.lineWidth = c.contornoLargura;
+      ctx.strokeRect(-t / 2, -t / 2, t, t);
+    }
+  } else if (c.formaTipo === 'circulo') {
+    ctx.beginPath();
+    ctx.arc(0, 0, t / 2, 0, Math.PI * 2);
+    ctx.fillStyle = c.cor;
+    ctx.fill();
+    if (c.contornoLargura > 0) {
+      ctx.strokeStyle = c.contornoCor;
+      ctx.lineWidth = c.contornoLargura;
+      ctx.stroke();
+    }
+  } else if (c.formaTipo === 'linha') {
+    ctx.beginPath();
+    ctx.moveTo(-t / 2, 0);
+    ctx.lineTo(t / 2, 0);
+    ctx.strokeStyle = c.cor;
+    ctx.lineWidth = Math.max(2, c.contornoLargura || 12);
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  } else if (c.formaTipo === 'estrela') {
+    const pontas = 5, rExt = t / 2, rInt = rExt * 0.42;
+    ctx.beginPath();
+    for (let i = 0; i < pontas * 2; i++) {
+      const raio = i % 2 === 0 ? rExt : rInt;
+      const ang = (Math.PI / pontas) * i - Math.PI / 2;
+      const px = Math.cos(ang) * raio, py = Math.sin(ang) * raio;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = c.cor;
+    ctx.fill();
+    if (c.contornoLargura > 0) {
+      ctx.strokeStyle = c.contornoCor;
+      ctx.lineWidth = c.contornoLargura;
+      ctx.stroke();
+    }
+  }
+}
+
 function desenhar() {
   const ed = estado.editor;
   ctx.clearRect(0, 0, TAM, TAM);
@@ -1338,6 +1428,9 @@ function desenhar() {
       const w = img.naturalWidth * base * (c.escala || 1);
       const h = img.naturalHeight * base * (c.escala || 1);
       ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    } else if (c.tipo === 'forma') {
+      ctx.scale(c.escala || 1, c.escala || 1);
+      desenharForma(c);
     } else {
       const m = medirTexto(c);
       ctx.scale(c.escala || 1, c.escala || 1);
@@ -1614,7 +1707,10 @@ function desenharListaCamadas() {
     const li = document.createElement('li');
     if (c.id === ed.selecionada) li.classList.add('sel');
     if (c.bloqueada) li.classList.add('bloqueada');
-    const rotulo = c.tipo === 'imagem' ? '🖼 ' + (c.nome || 'Imagem') : '🅣 ' + (c.texto || '').split('\n')[0].slice(0, 22);
+    const ICONE_FORMA = { retangulo: '▭', circulo: '●', linha: '╱', estrela: '★' };
+    const rotulo = c.tipo === 'imagem' ? '🖼 ' + (c.nome || 'Imagem')
+      : c.tipo === 'forma' ? (ICONE_FORMA[c.formaTipo] || '◆') + ' ' + (c.nome || 'Forma')
+      : '🅣 ' + (c.texto || '').split('\n')[0].slice(0, 22);
     const miniatura = c.tipo === 'imagem' && ed.imagens[c.imagemId] ? ed.imagens[c.imagemId].atual.src : null;
     li.innerHTML = `
       ${miniatura ? `<img class="mini-thumb" src="${miniatura}" alt="">` : ''}
@@ -1723,6 +1819,29 @@ $('#ferr-fundo').addEventListener('click', () => {
 });
 $('#ferr-camadas').addEventListener('click', () => {
   $('#painel-camadas').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+/* ----- formas ----- */
+$('#ferr-formas').addEventListener('click', (e) => {
+  e.stopPropagation();
+  $('#menu-formas').classList.toggle('oculto');
+});
+$('#menu-formas').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-forma]');
+  if (!b) return;
+  const ed = estado.editor;
+  if (!ed) return;
+  registrar();
+  const c = camadaForma(b.dataset.forma);
+  ed.camadas.push(c);
+  ed.selecionada = c.id;
+  sincronizar();
+  $('#menu-formas').classList.add('oculto');
+});
+document.addEventListener('click', (e) => {
+  if (!$('#menu-formas').classList.contains('oculto') && !e.target.closest('#ferramentas-rail')) {
+    $('#menu-formas').classList.add('oculto');
+  }
 });
 
 /* ----- ferramenta de corte (crop) -----
@@ -1937,10 +2056,12 @@ $('#btn-centralizar').addEventListener('click', () => {
 function preencherInspetor() {
   const c = camadaSelecionada();
   const painelTexto = $('#inspetor-texto');
+  const painelForma = $('#inspetor-forma');
   const painelComum = $('#inspetor-comum');
   const painelProjeto = $('#painel-projeto');
   if (!c) {
     painelTexto.classList.add('oculto');
+    painelForma.classList.add('oculto');
     painelComum.classList.add('oculto');
     painelProjeto.classList.remove('oculto');
     return;
@@ -1948,6 +2069,7 @@ function preencherInspetor() {
   painelProjeto.classList.add('oculto');
   painelComum.classList.remove('oculto');
   painelTexto.classList.toggle('oculto', c.tipo !== 'texto');
+  painelForma.classList.toggle('oculto', c.tipo !== 'forma');
 
   if (c.tipo === 'texto') {
     $('#txt-conteudo').value = c.texto;
@@ -1963,8 +2085,13 @@ function preencherInspetor() {
     $('#v-contorno').textContent = temContorno ? c.contorno : '0 (desligado)';
     $('#txt-sombra').value = c.sombra; $('#v-sombra').textContent = c.sombra;
     $('#txt-sombra-cor').value = c.sombraCor;
+  } else if (c.tipo === 'forma') {
+    $('#forma-cor').value = c.cor;
+    $('#forma-contorno-cor').value = c.contornoCor;
+    $('#forma-contorno').value = c.contornoLargura || 0;
+    $('#v-forma-contorno').textContent = c.contornoLargura || 0;
   }
-  $('#c-nome').value = c.nome || (c.tipo === 'texto' ? 'Texto' : 'Imagem');
+  $('#c-nome').value = c.nome || (c.tipo === 'texto' ? 'Texto' : c.tipo === 'forma' ? (NOMES_FORMA[c.formaTipo] || 'Forma') : 'Imagem');
   $('#c-visivel').checked = c.visivel !== false;
   $('#c-bloqueada').checked = !!c.bloqueada;
   $('#c-rotacao').value = c.rotacao || 0; $('#v-rotacao').textContent = (c.rotacao || 0) + '°';
@@ -2011,6 +2138,10 @@ $('#txt-contorno-ativo').addEventListener('change', () => {
 });
 ligarControle('#txt-sombra', (c, v) => c.sombra = Number(v));
 ligarControle('#txt-sombra-cor', (c, v) => c.sombraCor = v);
+ligarControle('#forma-cor', (c, v) => c.cor = v, false);
+ligarControle('#forma-contorno-cor', (c, v) => c.contornoCor = v, false);
+ligarControle('#forma-contorno', (c, v) => c.contornoLargura = Number(v));
+
 ligarControle('#c-rotacao', (c, v) => c.rotacao = Number(v));
 ligarControle('#c-escala', (c, v) => c.escala = Number(v) / 100);
 ligarControle('#c-opacidade', (c, v) => c.opacidade = Number(v) / 100);
@@ -2114,6 +2245,10 @@ function caixaDaCamada(c) {
       w: entrada.atual.naturalWidth * base * (c.escala || 1),
       h: entrada.atual.naturalHeight * base * (c.escala || 1),
     };
+  }
+  if (c.tipo === 'forma') {
+    const t = TAMANHO_FORMA_BASE * (c.escala || 1);
+    return { w: t, h: c.formaTipo === 'linha' ? Math.max(20, (c.contornoLargura || 12) * 2) : t };
   }
   const m = medirTexto(c);
   return { w: m.largura * (c.escala || 1), h: m.altura * (c.escala || 1) };
