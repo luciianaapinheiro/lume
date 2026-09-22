@@ -9,40 +9,43 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;700;800&family=Inter:wght@400;500;600&family=Anton&family=Fredoka:wght@600;700&family=Caveat:wght@700&family=Poppins:wght@500;700&family=Bebas+Neue&family=Pacifico&family=Permanent+Marker&family=Archivo+Black&family=Playfair+Display:wght@700;800&family=Luckiest+Guy&family=Baloo+2:wght@600;700&family=Righteous&display=swap" rel="stylesheet">
 <style>
 :root{
-  --fundo:#E9E4F3;
-  --fundo2:#DCD5EC;
+  --fundo:#F7F7F9;
+  --fundo2:#ECECF1;
   --painel:#FFFFFF;
-  --tinta:#221A2E;
-  --tinta-fraca:#6A5E7E;
-  --borda:#CFC6E2;
-  --pop:#FF3D7F;
+  --tinta:#17181C;
+  --tinta-fraca:#6B6B76;
+  --borda:#E3E3E9;
+  --pop:#6C4FE0;
   --pop-tinta:#FFFFFF;
-  --menta:#16C79A;
-  --sol:#FFC542;
-  --sombra:0 6px 0 rgba(34,26,46,.12);
-  --raio:14px;
+  --menta:#0EA57F;
+  --sol:#D69A1F;
+  --sombra:0 1px 2px rgba(15,15,25,.06), 0 8px 20px -8px rgba(15,15,25,.14);
+  --sombra-forte:0 4px 10px rgba(15,15,25,.10), 0 16px 32px -12px rgba(15,15,25,.22);
+  --raio:12px;
   --ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --display:"Bricolage Grotesque","Inter",system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --fundo:#191223;
-    --fundo2:#221A2E;
-    --painel:#2A2038;
-    --tinta:#F4EFFF;
-    --tinta-fraca:#A395BC;
-    --borda:#3C3050;
-    --sombra:0 6px 0 rgba(0,0,0,.35);
+    --fundo:#121317;
+    --fundo2:#1B1D22;
+    --painel:#1E2026;
+    --tinta:#F0F0F3;
+    --tinta-fraca:#9A9AA4;
+    --borda:#2C2E35;
+    --sombra:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -8px rgba(0,0,0,.55);
+    --sombra-forte:0 4px 12px rgba(0,0,0,.5), 0 20px 40px -12px rgba(0,0,0,.6);
   }
 }
 :root[data-theme="dark"]{
-  --fundo:#191223;
-  --fundo2:#221A2E;
-  --painel:#2A2038;
-  --tinta:#F4EFFF;
-  --tinta-fraca:#A395BC;
-  --borda:#3C3050;
-  --sombra:0 6px 0 rgba(0,0,0,.35);
+  --fundo:#121317;
+  --fundo2:#1B1D22;
+  --painel:#1E2026;
+  --tinta:#F0F0F3;
+  --tinta-fraca:#9A9AA4;
+  --borda:#2C2E35;
+  --sombra:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -8px rgba(0,0,0,.55);
+  --sombra-forte:0 4px 12px rgba(0,0,0,.5), 0 20px 40px -12px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -56,7 +59,7 @@ body{
 }
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
-:focus-visible{outline:3px solid var(--pop);outline-offset:2px;border-radius:6px}
+:focus-visible{outline:2.5px solid var(--pop);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 /* ---------- topo ---------- */
@@ -74,7 +77,7 @@ button{cursor:pointer}
 .marca .selo{
   width:26px;height:26px;border-radius:8px;background:var(--pop);
   display:grid;place-items:center;color:#fff;font-size:14px;
-  transform:rotate(-6deg);box-shadow:0 3px 0 rgba(34,26,46,.25);
+  box-shadow:0 2px 6px rgba(108,79,224,.35);
 }
 .marca-textos{display:flex;flex-direction:column;line-height:1.15;margin-right:6px}
 .marca-assinatura{
@@ -171,10 +174,10 @@ button{cursor:pointer}
   aspect-ratio:1/1;border-radius:10px;overflow:hidden;
   background-color:#fff;
   background-image:
-    linear-gradient(45deg,#E2DCEF 25%,transparent 25%),
-    linear-gradient(-45deg,#E2DCEF 25%,transparent 25%),
-    linear-gradient(45deg,transparent 75%,#E2DCEF 75%),
-    linear-gradient(-45deg,transparent 75%,#E2DCEF 75%);
+    linear-gradient(45deg,#E6E6EC 25%,transparent 25%),
+    linear-gradient(-45deg,#E6E6EC 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#E6E6EC 75%),
+    linear-gradient(-45deg,transparent 75%,#E6E6EC 75%);
   background-size:14px 14px;
   background-position:0 0,0 7px,7px -7px,-7px 0;
   display:grid;place-items:center;
@@ -192,7 +195,7 @@ button{cursor:pointer}
   position:absolute;top:12px;right:12px;z-index:2;
   border:none;background:rgba(255,255,255,.9);border-radius:999px;
   width:28px;height:28px;display:grid;place-items:center;font-size:14px;
-  box-shadow:0 2px 6px rgba(0,0,0,.18);color:#221A2E;
+  box-shadow:0 2px 6px rgba(0,0,0,.14);color:var(--tinta);
 }
 .vazio{
   border:2px dashed var(--borda);border-radius:var(--raio);
@@ -254,10 +257,10 @@ button{cursor:pointer}
 .palco{
   background-color:var(--painel);
   background-image:
-    linear-gradient(45deg,#E2DCEF 25%,transparent 25%),
-    linear-gradient(-45deg,#E2DCEF 25%,transparent 25%),
-    linear-gradient(45deg,transparent 75%,#E2DCEF 75%),
-    linear-gradient(-45deg,transparent 75%,#E2DCEF 75%);
+    linear-gradient(45deg,#E6E6EC 25%,transparent 25%),
+    linear-gradient(-45deg,#E6E6EC 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#E6E6EC 75%),
+    linear-gradient(-45deg,transparent 75%,#E6E6EC 75%);
   background-size:20px 20px;
   background-position:0 0,0 10px,10px -10px,-10px 0;
   border:1px solid var(--borda);border-radius:var(--raio);
@@ -1190,7 +1193,7 @@ const TAM = 1024;
 function camadaTexto() {
   return {
     id: uid(), tipo: 'texto', texto: 'Seu texto', fonte: 'Bricolage Grotesque',
-    tamanho: 120, cor: '#ffffff', contornoCor: '#221a2e', contorno: 10, contornoAnterior: 10,
+    tamanho: 120, cor: '#ffffff', contornoCor: '#17181C', contorno: 10, contornoAnterior: 10,
     sombra: 0, sombraCor: '#000000',
     x: TAM / 2, y: TAM * 0.78, rotacao: 0, escala: 1, opacidade: 1, visivel: true,
   };
@@ -1200,7 +1203,7 @@ const NOMES_FORMA = { retangulo: 'Retângulo', circulo: 'Círculo', linha: 'Linh
 function camadaForma(formaTipo) {
   return {
     id: uid(), tipo: 'forma', formaTipo, nome: NOMES_FORMA[formaTipo] || 'Forma',
-    cor: '#7B4FE0', contornoCor: '#221a2e', contornoLargura: formaTipo === 'linha' ? 12 : 0,
+    cor: '#6C4FE0', contornoCor: '#17181C', contornoLargura: formaTipo === 'linha' ? 12 : 0,
     x: TAM / 2, y: TAM / 2, rotacao: 0, escala: 1, opacidade: 1, visivel: true, bloqueada: false,
   };
 }
@@ -1497,7 +1500,7 @@ function desenharSelecao(ed) {
   ctx.save();
   ctx.translate(c.x, c.y);
   ctx.rotate((c.rotacao || 0) * Math.PI / 180);
-  ctx.strokeStyle = '#7B4FE0';
+  ctx.strokeStyle = '#6C4FE0';
   ctx.lineWidth = 2;
   ctx.setLineDash([6, 4]);
   ctx.strokeRect(-w / 2, -h / 2, w, h);
@@ -1513,8 +1516,8 @@ function desenharSelecao(ed) {
   if (c.bloqueada) return;
   for (const a of alcasDaCamada(c)) {
     ctx.beginPath();
-    ctx.fillStyle = a.tipo === 'rotacao' ? '#7B4FE0' : '#fff';
-    ctx.strokeStyle = '#7B4FE0';
+    ctx.fillStyle = a.tipo === 'rotacao' ? '#6C4FE0' : '#fff';
+    ctx.strokeStyle = '#6C4FE0';
     ctx.lineWidth = 2;
     ctx.arc(a.x, a.y, RAIO_ALCA, 0, Math.PI * 2);
     ctx.fill();
@@ -1893,7 +1896,7 @@ function desenharCorte() {
   ctxCorte.fillRect(rx + rw, ry, telaCorte.width - rx - rw, rh);
   ctxCorte.restore();
 
-  ctxCorte.strokeStyle = '#7B4FE0';
+  ctxCorte.strokeStyle = '#6C4FE0';
   ctxCorte.lineWidth = 2;
   ctxCorte.strokeRect(rx, ry, rw, rh);
 
