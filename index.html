@@ -887,10 +887,29 @@ $('#btn-conta').addEventListener('click', async () => {
   } catch (err) { console.error(err); avisar('Não foi possível entrar'); }
 });
 
+/* Roda uma vez ao logar: sobe pra nuvem tudo que já existia só neste
+   aparelho (figurinhas e pastas criadas antes do login). enviarParaNuvem
+   sobrescreve o documento da nuvem, então só chamamos pro que ainda não
+   está lá — evita reenviar tudo de novo a cada login. */
+async function subirDadosLocaisParaNuvem() {
+  try {
+    const pastasNuvem = new Set((await colUsuario('pastas').get()).docs.map(d => d.id));
+    for (const p of await lerTodos('pastas')) {
+      if (!pastasNuvem.has(p.id)) await enviarParaNuvem('pastas', p);
+    }
+    const figsNuvem = new Set((await colUsuario('figurinhas').get()).docs.map(d => d.id));
+    for (const f of await lerTodos('figurinhas')) {
+      if (!figsNuvem.has(f.id)) await enviarParaNuvem('figurinhas', f);
+    }
+  } catch (err) { console.error('Falha ao subir dados locais', err); }
+}
+
 auth.onAuthStateChanged(async (user) => {
   usuarioAtual = user;
   atualizarBotaoConta();
   if (user) {
+    avisar('Sincronizando…');
+    await subirDadosLocaisParaNuvem();
     await baixarDaNuvem();
     await carregar();
     avisar('Sincronizado com a nuvem');
