@@ -276,7 +276,9 @@ button{cursor:pointer}
   border:2px dashed var(--pop);
   box-shadow:0 0 0 4px color-mix(in srgb,var(--pop) 16%,transparent);
 }
+.tela-wrap{ position:relative; display:block; }
 #tela{width:100%;height:auto;display:block;touch-action:none;border-radius:8px;max-width:640px}
+#tela-selecao{ position:absolute; inset:0; width:100%; height:100%; border-radius:8px; pointer-events:none; }
 .painel{
   background:var(--painel);border:1px solid var(--borda);
   border-radius:var(--raio);padding:12px;box-shadow:var(--sombra);
@@ -580,7 +582,7 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
       <div>
         <div class="palco-scroll">
           <div class="palco-zoom" id="palco-zoom">
-            <div class="palco" id="palco-drop"><canvas id="tela" width="1024" height="1024"></canvas></div>
+            <div class="palco" id="palco-drop"><div class="tela-wrap"><canvas id="tela" width="1024" height="1024"></canvas><canvas id="tela-selecao" width="1024" height="1024" aria-hidden="true"></canvas></div></div>
           </div>
         </div>
         <div class="zoom-bar">
@@ -1526,6 +1528,8 @@ $$('[data-fechar]').forEach(b => b.addEventListener('click', () => b.closest('di
    ========================================================= */
 const tela = $('#tela');
 const ctx = tela.getContext('2d');
+const telaSelecao = $('#tela-selecao');
+const ctxSel = telaSelecao.getContext('2d');
 const TAM = 1024;
 
 function camadaTexto() {
@@ -1754,7 +1758,7 @@ function desenharForma(c) {
 function desenhar() {
   const ed = estado.editor;
   ctx.clearRect(0, 0, TAM, TAM);
-  if (!ed) return;
+  if (!ed) { ctxSel.clearRect(0, 0, TAM, TAM); return; }
   for (const c of ed.camadas) {
     if (c.visivel === false) continue;
     ctx.save();
@@ -1830,36 +1834,40 @@ function alcasDaCamada(c) {
 }
 
 function desenharSelecao(ed) {
+  // Desenha SEMPRE na tela de seleção (ctxSel), separada da tela de arte (ctx).
+  // Isso garante que a caixa tracejada e as alças nunca entrem em exportações,
+  // cópias ou no "Salvar projeto", pois essas ações só leem a tela #tela.
+  ctxSel.clearRect(0, 0, TAM, TAM);
   if (!ed || !ed.selecionada) return;
   const c = ed.camadas.find(x => x.id === ed.selecionada);
   if (!c || c.visivel === false) return;
   const { w, h } = caixaDaCamada(c);
 
-  ctx.save();
-  ctx.translate(c.x, c.y);
-  ctx.rotate((c.rotacao || 0) * Math.PI / 180);
-  ctx.strokeStyle = '#6C4FE0';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 4]);
-  ctx.strokeRect(-w / 2, -h / 2, w, h);
-  ctx.setLineDash([]);
+  ctxSel.save();
+  ctxSel.translate(c.x, c.y);
+  ctxSel.rotate((c.rotacao || 0) * Math.PI / 180);
+  ctxSel.strokeStyle = '#6C4FE0';
+  ctxSel.lineWidth = 2;
+  ctxSel.setLineDash([6, 4]);
+  ctxSel.strokeRect(-w / 2, -h / 2, w, h);
+  ctxSel.setLineDash([]);
   if (!c.bloqueada) {
-    ctx.beginPath();
-    ctx.moveTo(0, -h / 2);
-    ctx.lineTo(0, -h / 2 - DIST_ALCA_ROT);
-    ctx.stroke();
+    ctxSel.beginPath();
+    ctxSel.moveTo(0, -h / 2);
+    ctxSel.lineTo(0, -h / 2 - DIST_ALCA_ROT);
+    ctxSel.stroke();
   }
-  ctx.restore();
+  ctxSel.restore();
 
   if (c.bloqueada) return;
   for (const a of alcasDaCamada(c)) {
-    ctx.beginPath();
-    ctx.fillStyle = a.tipo === 'rotacao' ? '#6C4FE0' : '#fff';
-    ctx.strokeStyle = '#6C4FE0';
-    ctx.lineWidth = 2;
-    ctx.arc(a.x, a.y, RAIO_ALCA, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    ctxSel.beginPath();
+    ctxSel.fillStyle = a.tipo === 'rotacao' ? '#6C4FE0' : '#fff';
+    ctxSel.strokeStyle = '#6C4FE0';
+    ctxSel.lineWidth = 2;
+    ctxSel.arc(a.x, a.y, RAIO_ALCA, 0, Math.PI * 2);
+    ctxSel.fill();
+    ctxSel.stroke();
   }
 }
 
