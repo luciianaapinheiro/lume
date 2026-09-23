@@ -352,6 +352,39 @@ dialog{
 }
 dialog::backdrop{background:rgba(25,18,35,.55)}
 #dlg-cortar{max-width:min(560px,94vw)}
+#dlg-pincel{max-width:min(820px,96vw)}
+.pincel-corpo{display:flex;gap:14px;flex-wrap:wrap}
+.pincel-ferramentas{width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
+.pincel-modos{display:flex;gap:6px}
+.pincel-modo{
+  flex:1;border:1px solid var(--borda);background:var(--painel);color:var(--tinta-fraca);
+  border-radius:9px;padding:8px 6px;font-size:12.5px;font-weight:700;
+}
+.pincel-modo.ativo{background:var(--pop);color:var(--pop-tinta);border-color:var(--pop)}
+.pincel-zoom{display:flex;align-items:center;justify-content:center;gap:8px}
+.pincel-zoom button{
+  width:30px;height:30px;border-radius:8px;border:1px solid var(--borda);background:var(--fundo2);color:var(--tinta);
+}
+.pincel-acoes-linha{display:flex;gap:6px}
+.pincel-acoes-linha .btn{flex:1;padding:7px 4px;font-size:12.5px}
+#pincel-limpar{font-size:12.5px;padding:7px 8px}
+.pincel-quadro{
+  position:relative;flex:1;min-width:260px;max-height:60vh;overflow:auto;
+  background:repeating-conic-gradient(#00000012 0% 25%, transparent 0% 50%) 50% / 20px 20px;
+  border:1px solid var(--borda);border-radius:var(--raio);
+}
+#pincel-canvas{display:block;touch-action:none;cursor:none}
+.pincel-cursor{
+  position:absolute;border-radius:50%;border:1.5px solid #fff;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6);pointer-events:none;transform:translate(-50%,-50%);
+  display:none;z-index:5;
+}
+.pincel-cursor.restaurar{border-color:var(--pop)}
+.pincel-cursor.apagar{border-color:#e0524f}
+@media (max-width:640px){
+  .pincel-ferramentas{width:100%}
+  .pincel-quadro{max-height:44vh}
+}
 dialog h3{font-family:var(--display);margin:0 0 10px}
 .dialogo-acoes{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 #aviso{
@@ -475,6 +508,7 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
             <button class="btn btn-pop" id="btn-remover-fundo">🪄 Remover fundo</button>
             <button class="btn" id="btn-restaurar-fundo">Restaurar imagem original</button>
           </div>
+          <button class="btn" style="margin-top:8px;width:100%" id="btn-pincel-fundo">🖌 Corrigir manualmente com pincel</button>
           <p class="dica">"Restaurar imagem original" desfaz tanto a remoção de fundo quanto qualquer corte já aplicado nesta camada, voltando à imagem como foi carregada nesta sessão de edição.</p>
         </div>
 
@@ -667,6 +701,49 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
   <div class="dialogo-acoes">
     <button class="btn" data-fechar>Cancelar</button>
     <button class="btn btn-pop" id="corte-aplicar">Aplicar corte</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-pincel">
+  <h3>🖌 Corrigir remoção de fundo</h3>
+  <div class="pincel-corpo">
+    <div class="pincel-ferramentas">
+      <div class="pincel-modos">
+        <button type="button" class="pincel-modo ativo" id="pincel-modo-restaurar" title="Restaurar (R)">↺ Restaurar</button>
+        <button type="button" class="pincel-modo" id="pincel-modo-apagar" title="Apagar (E)">⌫ Apagar</button>
+      </div>
+      <div class="campo">
+        <label for="pincel-tamanho">Tamanho do pincel <span id="v-pincel-tamanho"></span></label>
+        <input type="range" id="pincel-tamanho" min="4" max="300" step="1" value="40">
+      </div>
+      <div class="campo">
+        <label for="pincel-dureza">Dureza da borda <span id="v-pincel-dureza"></span></label>
+        <input type="range" id="pincel-dureza" min="0" max="100" step="1" value="70">
+      </div>
+      <div class="campo">
+        <label for="pincel-opacidade">Opacidade por passada <span id="v-pincel-opacidade"></span></label>
+        <input type="range" id="pincel-opacidade" min="1" max="100" step="1" value="100">
+      </div>
+      <div class="pincel-zoom">
+        <button type="button" id="pincel-zoom-menos" title="Diminuir zoom">−</button>
+        <span id="v-pincel-zoom">100%</span>
+        <button type="button" id="pincel-zoom-mais" title="Aumentar zoom">+</button>
+      </div>
+      <div class="pincel-acoes-linha">
+        <button type="button" class="btn" id="pincel-desfazer" title="Desfazer (Ctrl+Z)">↶ Desfazer</button>
+        <button type="button" class="btn" id="pincel-refazer" title="Refazer (Ctrl+Shift+Z)">↷ Refazer</button>
+      </div>
+      <button type="button" class="btn" id="pincel-limpar">Voltar ao resultado do removedor</button>
+      <p class="dica" style="margin:0">Atalhos: R restaurar · E apagar · [ ] tamanho · Ctrl+Z desfazer · Alt inverte o modo enquanto seguro.</p>
+    </div>
+    <div class="pincel-quadro" id="pincel-quadro">
+      <canvas id="pincel-canvas"></canvas>
+      <div class="pincel-cursor restaurar" id="pincel-cursor"></div>
+    </div>
+  </div>
+  <div class="dialogo-acoes">
+    <button class="btn" data-fechar>Cancelar</button>
+    <button class="btn btn-pop" id="pincel-aplicar">Aplicar</button>
   </div>
 </dialog>
 
@@ -2199,6 +2276,282 @@ $('#corte-aplicar').addEventListener('click', () => {
   };
   nova.src = off.toDataURL('image/png');
   $('#dlg-cortar').close();
+});
+
+/* ----- pincel de correção manual (restaurar / apagar) -----
+   Não usa flood fill nem detecta nada sozinho: é edição de máscara pura.
+   canvasOrigemNat  = a foto original (entrada.original), nunca é tocada.
+   canvasBaseNat    = uma cópia do resultado de quando o diálogo abriu
+                       (o que "Remover fundo" tinha deixado) — usada só
+                       pelo botão "Voltar ao resultado do removedor".
+   canvasResultNat  = o canvas de trabalho: começa igual ao base e é isso
+                       que vai virar a nova entrada.atual ao aplicar.
+   Restaurar = desenha um pedaço da foto original "por trás" do resultado
+   (destination-over), então onde já havia pixel visível nada muda, e onde
+   estava transparente o pixel original aparece — na intensidade do pincel.
+   Apagar = reduz a opacidade do resultado (destination-out) na área do
+   pincel, sem tocar em cor nenhuma. */
+let pincel = null; // { camadaId, larguraNat, alturaNat, escalaBase, zoom, modo, ... }
+const telaPincel = $('#pincel-canvas');
+const ctxPincelTela = telaPincel.getContext('2d');
+const cursorPincel = $('#pincel-cursor');
+const PINCEL_MAX = 560;
+const PINCEL_HIST_MAX = 15;
+
+function abrirPincel() {
+  const c = camadaSelecionada();
+  if (!c || c.tipo !== 'imagem') { avisar('Selecione uma camada de imagem para corrigir.'); return; }
+  const entrada = estado.editor.imagens[c.imagemId];
+  if (!entrada) return;
+
+  const larguraNat = entrada.original.naturalWidth, alturaNat = entrada.original.naturalHeight;
+  const canvasOrigemNat = document.createElement('canvas');
+  canvasOrigemNat.width = larguraNat; canvasOrigemNat.height = alturaNat;
+  canvasOrigemNat.getContext('2d').drawImage(entrada.original, 0, 0);
+
+  const canvasBaseNat = document.createElement('canvas');
+  canvasBaseNat.width = larguraNat; canvasBaseNat.height = alturaNat;
+  canvasBaseNat.getContext('2d').drawImage(entrada.atual, 0, 0, larguraNat, alturaNat);
+
+  const canvasResultNat = document.createElement('canvas');
+  canvasResultNat.width = larguraNat; canvasResultNat.height = alturaNat;
+  canvasResultNat.getContext('2d').drawImage(canvasBaseNat, 0, 0);
+
+  const escalaBase = Math.min(1, PINCEL_MAX / larguraNat, PINCEL_MAX / alturaNat);
+
+  pincel = {
+    camadaId: c.id, larguraNat, alturaNat, escalaBase, zoom: 100,
+    canvasOrigemNat, canvasBaseNat, canvasResultNat,
+    ctxResult: canvasResultNat.getContext('2d'),
+    modo: 'restaurar', tamanho: Number($('#pincel-tamanho').value),
+    dureza: Number($('#pincel-dureza').value), opacidade: Number($('#pincel-opacidade').value),
+    historico: [], futuro: [], desenhando: false, ultimoPonto: null, altInverte: false,
+  };
+
+  atualizarValoresPincel();
+  redimensionarTelaPincel();
+  desenharPincelTela();
+  $('#dlg-pincel').showModal();
+}
+$('#btn-pincel-fundo').addEventListener('click', abrirPincel);
+
+function redimensionarTelaPincel() {
+  if (!pincel) return;
+  const escala = pincel.escalaBase * (pincel.zoom / 100);
+  pincel.escalaTela = escala;
+  telaPincel.width = Math.max(1, Math.round(pincel.larguraNat * escala));
+  telaPincel.height = Math.max(1, Math.round(pincel.alturaNat * escala));
+}
+
+function desenharPincelTela() {
+  if (!pincel) return;
+  ctxPincelTela.imageSmoothingEnabled = true;
+  ctxPincelTela.clearRect(0, 0, telaPincel.width, telaPincel.height);
+  ctxPincelTela.drawImage(pincel.canvasResultNat, 0, 0, telaPincel.width, telaPincel.height);
+}
+
+function atualizarValoresPincel() {
+  $('#v-pincel-tamanho').textContent = pincel.tamanho + 'px';
+  $('#v-pincel-dureza').textContent = pincel.dureza + '%';
+  $('#v-pincel-opacidade').textContent = pincel.opacidade + '%';
+  $('#v-pincel-zoom').textContent = pincel.zoom + '%';
+}
+
+function modoEfetivoPincel() {
+  if (!pincel.altInverte) return pincel.modo;
+  return pincel.modo === 'restaurar' ? 'apagar' : 'restaurar';
+}
+
+function desenharGradienteCirculoPincel(ctx, x, y, raio, dureza, alpha) {
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(raio, 0.5));
+  const inicioSuave = Math.max(0, Math.min(0.98, dureza / 100));
+  grad.addColorStop(0, `rgba(0,0,0,${alpha})`);
+  grad.addColorStop(inicioSuave, `rgba(0,0,0,${alpha})`);
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(raio, 0.5), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function carimbarPincel(x, y) {
+  const raio = pincel.tamanho / 2;
+  const alpha = pincel.opacidade / 100;
+  const modo = modoEfetivoPincel();
+
+  if (modo === 'apagar') {
+    pincel.ctxResult.save();
+    pincel.ctxResult.globalCompositeOperation = 'destination-out';
+    desenharGradienteCirculoPincel(pincel.ctxResult, x, y, raio, pincel.dureza, alpha);
+    pincel.ctxResult.restore();
+    return;
+  }
+
+  // restaurar: recorta só o pedaço afetado da FOTO ORIGINAL, aplica a
+  // máscara do pincel na transparência dele, e desenha atrás do resultado
+  const sx = Math.max(0, Math.floor(x - raio)), sy = Math.max(0, Math.floor(y - raio));
+  const ex = Math.min(pincel.larguraNat, Math.ceil(x + raio)), ey = Math.min(pincel.alturaNat, Math.ceil(y + raio));
+  const sw = ex - sx, sh = ey - sy;
+  if (sw <= 0 || sh <= 0) return;
+
+  const tmp = document.createElement('canvas');
+  tmp.width = sw; tmp.height = sh;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(pincel.canvasOrigemNat, sx, sy, sw, sh, 0, 0, sw, sh);
+  tctx.globalCompositeOperation = 'destination-in';
+  desenharGradienteCirculoPincel(tctx, x - sx, y - sy, raio, pincel.dureza, alpha);
+
+  pincel.ctxResult.save();
+  pincel.ctxResult.globalCompositeOperation = 'destination-over';
+  pincel.ctxResult.drawImage(tmp, sx, sy);
+  pincel.ctxResult.restore();
+}
+
+function tracarPincel(de, para) {
+  const dist = Math.hypot(para.x - de.x, para.y - de.y);
+  const passo = Math.max(1, pincel.tamanho / 4);
+  const passos = Math.max(1, Math.ceil(dist / passo));
+  for (let i = 1; i <= passos; i++) {
+    const t = i / passos;
+    carimbarPincel(de.x + (para.x - de.x) * t, de.y + (para.y - de.y) * t);
+  }
+  desenharPincelTela();
+}
+
+function pontoNoPincel(e) {
+  const r = telaPincel.getBoundingClientRect();
+  const escalaTela = telaPincel.width / r.width;
+  const dispX = (e.clientX - r.left) * escalaTela, dispY = (e.clientY - r.top) * escalaTela;
+  return { x: dispX / pincel.escalaTela, y: dispY / pincel.escalaTela };
+}
+
+function salvarHistoricoPincel() {
+  pincel.historico.push(pincel.ctxResult.getImageData(0, 0, pincel.larguraNat, pincel.alturaNat));
+  if (pincel.historico.length > PINCEL_HIST_MAX) pincel.historico.shift();
+  pincel.futuro.length = 0;
+  atualizarBotoesPincel();
+}
+function desfazerPincel() {
+  if (!pincel || !pincel.historico.length) return;
+  pincel.futuro.push(pincel.ctxResult.getImageData(0, 0, pincel.larguraNat, pincel.alturaNat));
+  pincel.ctxResult.putImageData(pincel.historico.pop(), 0, 0);
+  desenharPincelTela();
+  atualizarBotoesPincel();
+}
+function refazerPincel() {
+  if (!pincel || !pincel.futuro.length) return;
+  pincel.historico.push(pincel.ctxResult.getImageData(0, 0, pincel.larguraNat, pincel.alturaNat));
+  pincel.ctxResult.putImageData(pincel.futuro.pop(), 0, 0);
+  desenharPincelTela();
+  atualizarBotoesPincel();
+}
+function atualizarBotoesPincel() {
+  if (!pincel) return;
+  $('#pincel-desfazer').disabled = !pincel.historico.length;
+  $('#pincel-refazer').disabled = !pincel.futuro.length;
+}
+
+telaPincel.addEventListener('pointerdown', (e) => {
+  if (!pincel) return;
+  salvarHistoricoPincel();
+  pincel.desenhando = true;
+  telaPincel.setPointerCapture(e.pointerId);
+  const p = pontoNoPincel(e);
+  pincel.ultimoPonto = p;
+  carimbarPincel(p.x, p.y);
+  desenharPincelTela();
+});
+telaPincel.addEventListener('pointermove', (e) => {
+  if (!pincel) return;
+  const p = pontoNoPincel(e);
+  const raioTela = (pincel.tamanho / 2) * pincel.escalaTela;
+  cursorPincel.style.left = (e.clientX - $('#pincel-quadro').getBoundingClientRect().left + $('#pincel-quadro').scrollLeft) + 'px';
+  cursorPincel.style.top = (e.clientY - $('#pincel-quadro').getBoundingClientRect().top + $('#pincel-quadro').scrollTop) + 'px';
+  cursorPincel.style.width = cursorPincel.style.height = (raioTela * 2) + 'px';
+  if (pincel.desenhando && pincel.ultimoPonto) {
+    tracarPincel(pincel.ultimoPonto, p);
+    pincel.ultimoPonto = p;
+  }
+});
+['pointerup', 'pointercancel'].forEach(ev => telaPincel.addEventListener(ev, () => {
+  if (pincel) { pincel.desenhando = false; pincel.ultimoPonto = null; }
+}));
+telaPincel.addEventListener('pointerenter', () => cursorPincel.style.display = 'block');
+telaPincel.addEventListener('pointerleave', () => cursorPincel.style.display = 'none');
+
+function definirModoPincel(modo) {
+  if (!pincel) return;
+  pincel.modo = modo;
+  $('#pincel-modo-restaurar').classList.toggle('ativo', modo === 'restaurar');
+  $('#pincel-modo-apagar').classList.toggle('ativo', modo === 'apagar');
+  cursorPincel.classList.toggle('restaurar', modoEfetivoPincel() === 'restaurar');
+  cursorPincel.classList.toggle('apagar', modoEfetivoPincel() === 'apagar');
+}
+$('#pincel-modo-restaurar').addEventListener('click', () => definirModoPincel('restaurar'));
+$('#pincel-modo-apagar').addEventListener('click', () => definirModoPincel('apagar'));
+
+$('#pincel-tamanho').addEventListener('input', (e) => { pincel.tamanho = Number(e.target.value); atualizarValoresPincel(); });
+$('#pincel-dureza').addEventListener('input', (e) => { pincel.dureza = Number(e.target.value); atualizarValoresPincel(); });
+$('#pincel-opacidade').addEventListener('input', (e) => { pincel.opacidade = Number(e.target.value); atualizarValoresPincel(); });
+
+function ajustarZoomPincel(delta) {
+  if (!pincel) return;
+  pincel.zoom = Math.max(25, Math.min(400, pincel.zoom + delta));
+  atualizarValoresPincel();
+  redimensionarTelaPincel();
+  desenharPincelTela();
+}
+$('#pincel-zoom-menos').addEventListener('click', () => ajustarZoomPincel(-25));
+$('#pincel-zoom-mais').addEventListener('click', () => ajustarZoomPincel(25));
+
+$('#pincel-desfazer').addEventListener('click', desfazerPincel);
+$('#pincel-refazer').addEventListener('click', refazerPincel);
+
+$('#pincel-limpar').addEventListener('click', () => {
+  if (!pincel) return;
+  salvarHistoricoPincel();
+  pincel.ctxResult.clearRect(0, 0, pincel.larguraNat, pincel.alturaNat);
+  pincel.ctxResult.drawImage(pincel.canvasBaseNat, 0, 0);
+  desenharPincelTela();
+  avisar('Voltou ao resultado do removedor de fundo.');
+});
+
+$('#pincel-aplicar').addEventListener('click', () => {
+  if (!pincel) { $('#dlg-pincel').close(); return; }
+  const ed = estado.editor;
+  const c = ed.camadas.find(x => x.id === pincel.camadaId);
+  const entrada = c ? ed.imagens[c.imagemId] : null;
+  if (!c || !entrada) { $('#dlg-pincel').close(); return; }
+
+  const nova = new Image();
+  nova.onload = () => {
+    entrada.atual = nova;
+    registrar();
+    sincronizar();
+    avisar('Correção aplicada.');
+  };
+  nova.src = pincel.canvasResultNat.toDataURL('image/png');
+  $('#dlg-pincel').close();
+});
+
+$('#dlg-pincel').addEventListener('close', () => { pincel = null; });
+
+document.addEventListener('keydown', (e) => {
+  if (!pincel || !$('#dlg-pincel').open) return;
+  if (e.key === 'Alt') { pincel.altInverte = true; definirModoPincel(pincel.modo); return; }
+  if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) {
+    e.preventDefault();
+    if (e.shiftKey) refazerPincel(); else desfazerPincel();
+    return;
+  }
+  if (e.key === 'e' || e.key === 'E') definirModoPincel('apagar');
+  else if (e.key === 'r' || e.key === 'R') definirModoPincel('restaurar');
+  else if (e.key === '[') { $('#pincel-tamanho').value = Math.max(4, pincel.tamanho - 6); pincel.tamanho = Number($('#pincel-tamanho').value); atualizarValoresPincel(); }
+  else if (e.key === ']') { $('#pincel-tamanho').value = Math.min(300, pincel.tamanho + 6); pincel.tamanho = Number($('#pincel-tamanho').value); atualizarValoresPincel(); }
+});
+document.addEventListener('keyup', (e) => {
+  if (!pincel || !$('#dlg-pincel').open) return;
+  if (e.key === 'Alt') { pincel.altInverte = false; definirModoPincel(pincel.modo); }
 });
 
 $('#btn-add-texto').addEventListener('click', () => {
