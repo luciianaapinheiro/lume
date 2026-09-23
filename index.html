@@ -366,6 +366,9 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
 }
 .oculto{display:none!important}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -384,6 +387,7 @@ dialog h3{font-family:var(--display);margin:0 0 10px}
     </svg>
     <span class="insta-texto">@lupinheirodigital</span>
   </a>
+  <button class="btn btn-icone" id="btn-conta" title="Entrar para sincronizar entre aparelhos">☁ Entrar</button>
   <button class="btn btn-icone" id="btn-tema" title="Alternar tema">◐</button>
   <button class="btn btn-pop" id="btn-importar">Adicionar PNG</button>
   <input type="file" id="arquivo" accept="image/png,image/webp,image/jpeg" multiple class="oculto">
@@ -771,10 +775,127 @@ async function loja(nome, modo = 'readonly') {
 function pedido(req) {
   return new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
 }
-async function salvarRegistro(nome, obj) { return pedido((await loja(nome, 'readwrite')).put(obj)); }
+async function salvarRegistroLocal(nome, obj) { return pedido((await loja(nome, 'readwrite')).put(obj)); }
 async function lerTodos(nome) { return pedido((await loja(nome)).getAll()); }
 async function lerUm(nome, id) { return pedido((await loja(nome)).get(id)); }
-async function apagarRegistro(nome, id) { return pedido((await loja(nome, 'readwrite')).delete(id)); }
+async function apagarRegistroLocal(nome, id) { return pedido((await loja(nome, 'readwrite')).delete(id)); }
+
+/* ---------------- Login + sincronização na nuvem (Firebase) ----------------
+   Estratégia: o IndexedDB continua sendo a fonte de dados que a interface lê
+   (rápido, funciona offline). salvarRegistro/apagarRegistro gravam local
+   PRIMEIRO (a UI nunca espera a rede) e, se a pessoa estiver logada, também
+   espelham a mudança na nuvem em segundo plano. Ao logar, baixarDaNuvem()
+   traz pro aparelho tudo que ainda não existe localmente. As imagens vão
+   como base64 dentro do próprio documento do Firestore (sem usar o Storage,
+   que passou a exigir plano pago). */
+const firebaseConfig = {
+  apiKey: "AIzaSyBeyhpfD86h9aJ3uDehaqKxhT_fKbkUs-Q",
+  authDomain: "lume-97ff9.firebaseapp.com",
+  projectId: "lume-97ff9",
+  storageBucket: "lume-97ff9.firebasestorage.app",
+  messagingSenderId: "407327142859",
+  appId: "1:407327142859:web:a1e33a8cccdbc1270c7c4e",
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const fdb = firebase.firestore();
+let usuarioAtual = null;
+let baixandoDaNuvem = false;
+// Cada documento do Firestore tem um limite de ~1 MB. Guardamos a imagem
+// como base64 dentro do próprio documento, então limitamos o blob original
+// a ~700 KB — em base64 isso vira uns 930 KB, com folga dentro do limite.
+const LIMITE_BYTES_FIGURINHA = 700 * 1024;
+
+function colUsuario(nome) {
+  return fdb.collection('usuarios').doc(usuarioAtual.uid).collection(nome);
+}
+
+function blobParaBase64(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result); // data URL: "data:image/png;base64,...."
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+async function base64ParaBlob(dataUrl) {
+  return (await fetch(dataUrl)).blob();
+}
+
+async function salvarRegistro(nome, obj) {
+  const r = await salvarRegistroLocal(nome, obj);
+  if (usuarioAtual && (nome === 'figurinhas' || nome === 'pastas')) enviarParaNuvem(nome, obj);
+  return r;
+}
+async function apagarRegistro(nome, id) {
+  const r = await apagarRegistroLocal(nome, id);
+  if (usuarioAtual && (nome === 'figurinhas' || nome === 'pastas')) apagarDaNuvem(nome, id);
+  return r;
+}
+
+async function enviarParaNuvem(nome, obj) {
+  try {
+    if (nome === 'figurinhas') {
+      const { blob, ...meta } = obj;
+      if (blob && blob.size > LIMITE_BYTES_FIGURINHA) {
+        avisar('"' + (obj.nome || 'Figurinha') + '" é grande demais pra sincronizar — fica só neste aparelho');
+        return;
+      }
+      const imagemBase64 = blob ? await blobParaBase64(blob) : null;
+      await colUsuario('figurinhas').doc(obj.id).set({ ...meta, imagemBase64 });
+    } else {
+      await colUsuario('pastas').doc(obj.id).set(obj);
+    }
+  } catch (err) { console.error('Falha ao sincronizar', nome, obj.id, err); }
+}
+async function apagarDaNuvem(nome, id) {
+  try {
+    await colUsuario(nome).doc(id).delete();
+  } catch (err) { console.error('Falha ao apagar na nuvem', nome, id, err); }
+}
+
+async function baixarDaNuvem() {
+  if (!usuarioAtual || baixandoDaNuvem) return;
+  baixandoDaNuvem = true;
+  try {
+    const pastasSnap = await colUsuario('pastas').get();
+    for (const doc of pastasSnap.docs) await salvarRegistroLocal('pastas', doc.data());
+
+    const figsSnap = await colUsuario('figurinhas').get();
+    for (const doc of figsSnap.docs) {
+      const { imagemBase64, ...meta } = doc.data();
+      if (await lerUm('figurinhas', meta.id)) continue; // já existe neste aparelho
+      try {
+        const blob = imagemBase64 ? await base64ParaBlob(imagemBase64) : null;
+        await salvarRegistroLocal('figurinhas', { ...meta, blob });
+      } catch (err) { console.error('Falha ao baixar figurinha', meta.id, err); }
+    }
+  } finally { baixandoDaNuvem = false; }
+}
+
+function atualizarBotaoConta() {
+  const btn = $('#btn-conta');
+  if (!btn) return;
+  btn.textContent = usuarioAtual ? ('☁ ' + (usuarioAtual.displayName || 'Conta').split(' ')[0]) : '☁ Entrar';
+  btn.title = usuarioAtual ? 'Logada como ' + (usuarioAtual.email || '') + ' — clique para sair' : 'Entrar para sincronizar entre aparelhos';
+}
+
+$('#btn-conta').addEventListener('click', async () => {
+  if (usuarioAtual) { await auth.signOut(); avisar('Você saiu da conta'); return; }
+  try {
+    await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  } catch (err) { console.error(err); avisar('Não foi possível entrar'); }
+});
+
+auth.onAuthStateChanged(async (user) => {
+  usuarioAtual = user;
+  atualizarBotaoConta();
+  if (user) {
+    await baixarDaNuvem();
+    await carregar();
+    avisar('Sincronizado com a nuvem');
+  }
+});
 
 /* ---------------- Estado ---------------- */
 const estado = {
