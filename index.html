@@ -2270,10 +2270,21 @@ function abrirPincel() {
   const entrada = estado.editor.imagens[c.imagemId];
   if (!entrada) return;
 
-  const larguraNat = entrada.original.naturalWidth, alturaNat = entrada.original.naturalHeight;
+  // Usa o tamanho de entrada.atual (não entrada.original): se a camada já
+  // foi cortada, atual e original têm dimensões diferentes, e usar a do
+  // original aqui esticaria/achataria a imagem cortada pra caber nela.
+  const larguraNat = entrada.atual.naturalWidth, alturaNat = entrada.atual.naturalHeight;
+  const origemCompativel = entrada.original.naturalWidth === larguraNat && entrada.original.naturalHeight === alturaNat;
+
   const canvasOrigemNat = document.createElement('canvas');
   canvasOrigemNat.width = larguraNat; canvasOrigemNat.height = alturaNat;
-  canvasOrigemNat.getContext('2d').drawImage(entrada.original, 0, 0);
+  // Só dá pra usar a foto original de verdade no modo Restaurar quando ela
+  // tem o mesmo tamanho (ou seja, a camada ainda não foi cortada). Depois
+  // de um corte, as coordenadas do original não batem mais com as do
+  // recorte, então o pincel usa o próprio resultado atual como referência
+  // (Restaurar não some com a imagem, só não recupera nada além do que já
+  // está visível agora).
+  canvasOrigemNat.getContext('2d').drawImage(origemCompativel ? entrada.original : entrada.atual, 0, 0, larguraNat, alturaNat);
 
   const canvasBaseNat = document.createElement('canvas');
   canvasBaseNat.width = larguraNat; canvasBaseNat.height = alturaNat;
@@ -2293,6 +2304,9 @@ function abrirPincel() {
     dureza: Number($('#pincel-dureza').value), opacidade: Number($('#pincel-opacidade').value),
     historico: [], futuro: [], desenhando: false, ultimoPonto: null, altInverte: false,
   };
+  if (!origemCompativel) {
+    avisar('Esta camada já foi cortada — o Restaurar só recupera o que já está visível, não a foto original inteira.');
+  }
 
   atualizarValoresPincel();
   redimensionarTelaPincel();
