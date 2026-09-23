@@ -878,60 +878,27 @@ const auth = firebase.auth();
 const fdb = firebase.firestore();
 let usuarioAtual = null;
 let baixandoDaNuvem = false;
-// Cada documento do Firestore tem um limite de ~1 MB. Guardamos a imagem
-// como base64 dentro do próprio documento, então limitamos o blob original
-// a ~700 KB — em base64 isso vira uns 930 KB, com folga dentro do limite.
-const LIMITE_BYTES_FIGURINHA = 700 * 1024;
+// As imagens agora vão pro Cloudinary (gratuito, sem cartão, até 10MB por
+// arquivo) em vez de base64 dentro do Firestore — o Firestore guarda só o
+// link (imagemUrl) e os outros dados da figurinha.
+const CLOUDINARY_CLOUD = 'zrgnj90b';
+const CLOUDINARY_PRESET = 'lume_unsigned';
+const LIMITE_BYTES_FIGURINHA = 10 * 1024 * 1024;
 
 function colUsuario(nome) {
   return fdb.collection('usuarios').doc(usuarioAtual.uid).collection(nome);
 }
 
-function blobParaBase64(blob) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result); // data URL: "data:image/png;base64,...."
-    r.onerror = rej;
-    r.readAsDataURL(blob);
+async function subirParaCloudinary(blob) {
+  const form = new FormData();
+  form.append('file', blob);
+  form.append('upload_preset', CLOUDINARY_PRESET);
+  const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST', body: form,
   });
-}
-async function base64ParaBlob(dataUrl) {
-  return (await fetch(dataUrl)).blob();
-}
-
-/* Reduz um blob de imagem até caber no limite, mantendo a transparência
-   (WebP com perdas preserva o canal alfa). Primeiro tenta só baixar a
-   qualidade; se não bastar, também reduz a resolução aos poucos. Isso só
-   afeta a cópia que vai pra nuvem — o arquivo original salvo neste
-   aparelho nunca é alterado. */
-async function comprimirParaLimite(blob, limiteBytes) {
-  if (blob.size <= limiteBytes) return blob;
-  const url = URL.createObjectURL(blob);
-  let img;
-  try {
-    img = await new Promise((res, rej) => {
-      const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url;
-    });
-  } finally { URL.revokeObjectURL(url); }
-
-  let largura = img.naturalWidth, altura = img.naturalHeight;
-  let melhorEsforco = null;
-  for (let tentativa = 0; tentativa < 6; tentativa++) {
-    const canvas = document.createElement('canvas');
-    canvas.width = largura; canvas.height = altura;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, largura, altura);
-    ctx.drawImage(img, 0, 0, largura, altura);
-    for (const qualidade of [0.85, 0.65, 0.45, 0.3]) {
-      const comprimido = await new Promise(res => canvas.toBlob(res, 'image/webp', qualidade));
-      if (!comprimido) continue;
-      if (!melhorEsforco || comprimido.size < melhorEsforco.size) melhorEsforco = comprimido;
-      if (comprimido.size <= limiteBytes) return comprimido;
-    }
-    largura = Math.round(largura * 0.75);
-    altura = Math.round(altura * 0.75);
-  }
-  return melhorEsforco || blob; // não coube nem reduzindo bastante — devolve o menor que conseguiu
+  if (!resp.ok) throw new Error('Cloudinary respondeu ' + resp.status);
+  const dados = await resp.json();
+  return dados.secure_url;
 }
 
 async function salvarRegistro(nome, obj) {
@@ -949,16 +916,12 @@ async function enviarParaNuvem(nome, obj) {
   try {
     if (nome === 'figurinhas') {
       const { blob, ...meta } = obj;
-      let blobEnvio = blob;
       if (blob && blob.size > LIMITE_BYTES_FIGURINHA) {
-        blobEnvio = await comprimirParaLimite(blob, LIMITE_BYTES_FIGURINHA);
-      }
-      if (blobEnvio && blobEnvio.size > LIMITE_BYTES_FIGURINHA) {
-        avisar('"' + (obj.nome || 'Figurinha') + '" é grande demais mesmo comprimida — fica só neste aparelho');
+        avisar('"' + (obj.nome || 'Figurinha') + '" é grande demais pra sincronizar (máx. 10 MB) — fica só neste aparelho');
         return;
       }
-      const imagemBase64 = blobEnvio ? await blobParaBase64(blobEnvio) : null;
-      await colUsuario('figurinhas').doc(obj.id).set({ ...meta, imagemBase64 });
+      const imagemUrl = blob ? await subirParaCloudinary(blob) : null;
+      await colUsuario('figurinhas').doc(obj.id).set({ ...meta, imagemUrl });
     } else {
       await colUsuario('pastas').doc(obj.id).set(obj);
     }
@@ -966,6 +929,9 @@ async function enviarParaNuvem(nome, obj) {
 }
 async function apagarDaNuvem(nome, id) {
   try {
+    // A imagem em si fica guardada no Cloudinary (apagar exigiria uma
+    // chamada assinada, que não dá pra fazer com segurança só no navegador
+    // — fica como custo aceitável dentro dos 25GB gratuitos por enquanto).
     await colUsuario(nome).doc(id).delete();
   } catch (err) { console.error('Falha ao apagar na nuvem', nome, id, err); }
 }
@@ -979,10 +945,10 @@ async function baixarDaNuvem() {
 
     const figsSnap = await colUsuario('figurinhas').get();
     for (const doc of figsSnap.docs) {
-      const { imagemBase64, ...meta } = doc.data();
+      const { imagemUrl, ...meta } = doc.data();
       if (await lerUm('figurinhas', meta.id)) continue; // já existe neste aparelho
       try {
-        const blob = imagemBase64 ? await base64ParaBlob(imagemBase64) : null;
+        const blob = imagemUrl ? await (await fetch(imagemUrl)).blob() : null;
         await salvarRegistroLocal('figurinhas', { ...meta, blob });
       } catch (err) { console.error('Falha ao baixar figurinha', meta.id, err); }
     }
