@@ -1093,17 +1093,41 @@ async function subirDadosLocaisParaNuvem() {
   } catch (err) { console.error('Falha ao subir dados locais', err); }
 }
 
+/* Só existe UM caminho que carrega e desenha a galeria pela primeira vez
+   (garantirCargaInicial). Antes disso, se a pessoa já estava logada em uma
+   sessão anterior, a sincronização com a nuvem roda primeiro — assim a tela
+   mostra direto a quantidade final e correta, em vez de mostrar a contagem
+   local e, alguns instantes depois, trocar para a contagem sincronizada. */
+let cargaInicialFeita = false;
+async function garantirCargaInicial() {
+  if (cargaInicialFeita) return;
+  cargaInicialFeita = true;
+  try {
+    await carregar();
+  } catch (err) {
+    console.error(err);
+    avisar('Não foi possível abrir o armazenamento local');
+  }
+}
+
 auth.onAuthStateChanged(async (user) => {
+  const primeiraVez = !cargaInicialFeita;
   usuarioAtual = user;
   atualizarBotaoConta();
   if (user) {
-    avisar('Sincronizando…');
+    if (!primeiraVez) avisar('Sincronizando…');
     await subirDadosLocaisParaNuvem();
     await baixarDaNuvem();
-    await carregar();
-    avisar('Sincronizado com a nuvem');
   }
+  await garantirCargaInicial();
+  if (!primeiraVez) await carregar(); // login/logout feito durante a sessão: atualiza a galeria de novo
+  if (user && !primeiraVez) avisar('Sincronizado com a nuvem');
 });
+
+// Segurança: se o Firebase demorar demais para responder (rede instável,
+// bloqueador de terceiros etc.), a galeria local aparece mesmo assim depois
+// de um tempo, em vez de ficar com a tela em branco esperando a nuvem.
+setTimeout(garantirCargaInicial, 3000);
 
 /* ---------------- Estado ---------------- */
 const estado = {
@@ -3260,11 +3284,10 @@ if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
   });
 }
 
-/* ---------------- início ---------------- */
-carregar().catch(err => {
-  console.error(err);
-  avisar('Não foi possível abrir o armazenamento local');
-});
+/* ---------------- início ----------------
+   A carga inicial da galeria acontece em garantirCargaInicial(), chamada
+   pelo listener de autenticação acima (com sincronização resolvida antes,
+   quando aplicável), e não mais aqui diretamente. */
 </script>
 <div id="lume-mascote" aria-hidden="true">
   <div class="balao" id="lume-mascote-balao" role="status" aria-live="polite"></div>
